@@ -10,7 +10,7 @@ Demo 需要快速验证节奏技能与 Boss 决策，但手感参数会频繁调
 
 ## Decision
 
-使用两个无节点、可测试的 `RefCounted` 模块：`SpellCommandBuffer` 和 `BattleModel`。前者在半拍网格上记录动作，并由结束键立即触发节奏识别；一个 Godot `Control` 场景负责实时输入、音频和绘制。音乐与视觉使用同一播放时钟，输入额外应用用户校准偏移。
+使用两个无节点、可测试的 `RefCounted` 模块：`SpellCommandBuffer` 和 `BattleModel`。前者在整拍网格上记录动作，并由结束键立即触发节奏识别；一个 Godot `Control` 场景负责实时输入、音频和绘制。音乐与视觉使用同一播放时钟，输入额外应用用户校准偏移。
 
 ## Consequences
 

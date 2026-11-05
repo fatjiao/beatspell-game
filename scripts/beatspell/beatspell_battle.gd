@@ -23,7 +23,7 @@ const SKILL_COLORS := {
 	"heal": Color("69f0a5"),
 }
 const DISPLAY_PATTERNS := {
-	"fireball": [{"tick": 0, "action": "step"}, {"tick": 2, "action": "finish"}],
+	"fireball": [{"tick": 0, "action": "step"}, {"tick": 1, "action": "finish"}],
 	"heal": [
 		{"tick": 0, "action": "step"},
 		{"tick": 1, "action": "step"},
@@ -193,9 +193,6 @@ func _register_action(action: String) -> void:
 		match registration.status:
 			"accepted":
 				_show_feedback("STEP", Color("ffc45e"), 240)
-			"needs_whole_beat":
-				_show_feedback("FIND THE WHOLE BEAT", Color("ff668e"), 520)
-				_play_sfx("error")
 			"duplicate":
 				_show_feedback("ONE MOVE PER TICK", Color("ff668e"), 520)
 				_play_sfx("error")
@@ -536,25 +533,25 @@ func _draw_beat_ring() -> void:
 	if _song_time_ms >= 0:
 		beat_phase = fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
 		cycle_progress = fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
-		current_ring_tick = int(floor(cycle_progress * 8.0))
+		current_ring_tick = int(floor(cycle_progress * 4.0))
 	var radius := 22.0 + (1.0 - beat_phase) * 4.0
 	draw_circle(center, radius, Color(0.06, 0.05, 0.14, 0.92))
 	draw_arc(center, radius, 0, TAU, 40, Color(0.55, 0.49, 1.0, 0.34), 1.0)
-	var beat_start_angle := -PI / 2.0 + float(current_ring_tick) * TAU / 8.0
+	var beat_start_angle := -PI / 2.0 + float(current_ring_tick) * TAU / 4.0
 	var head_angle := -PI / 2.0 + TAU * cycle_progress
 	draw_arc(center, radius, beat_start_angle, head_angle, 10, Color("8d7dff"), 2.0)
 	draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.4, Color("ffffff"))
-	for marker_index in 8:
-		var angle := -PI / 2.0 + float(marker_index) * TAU / 8.0
+	for marker_index in 4:
+		var angle := -PI / 2.0 + float(marker_index) * TAU / 4.0
 		var marker_position := center + Vector2(cos(angle), sin(angle)) * 16.0
 		var marker_color := Color("dad7ff") if marker_index == current_ring_tick else Color("514a72")
-		var marker_radius := 2.0 if marker_index == current_ring_tick else 1.5 if marker_index % 2 == 0 else 0.8
+		var marker_radius := 2.0 if marker_index == current_ring_tick else 1.5
 		draw_circle(marker_position, marker_radius, marker_color)
 	var displayed_events: Array = _command.events
 	if displayed_events.is_empty() and Time.get_ticks_msec() < _recent_command_until:
 		displayed_events = _recent_command
 	for entry in displayed_events:
-		var angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 8.0
+		var angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 4.0
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
 		if entry.action == "step":
 			draw_circle(input_position, 3.0, Color("ffc45e"))
@@ -583,11 +580,13 @@ func _draw_spell_cards() -> void:
 			draw_rect(card_rect.grow(2.0), Color(color, 0.13), true)
 		draw_rect(card_rect, Color(color, 0.85 if active or teaching else 0.30), false, 2.0 if teaching else 1.0)
 		draw_string(font, card_rect.position + Vector2(7, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 54, 7, color)
-		draw_line(card_rect.position + Vector2(76, 9), card_rect.position + Vector2(112, 9), Color("514a72"), 1.0)
-		for pattern_event in DISPLAY_PATTERNS[skill]:
+		var pattern: Array = DISPLAY_PATTERNS[skill]
+		var pattern_end_x := 76.0 + float(pattern[-1].tick) * 18.0
+		draw_line(card_rect.position + Vector2(76, 9), card_rect.position + Vector2(pattern_end_x, 9), Color("514a72"), 1.0)
+		for pattern_event in pattern:
 			var symbol_position := card_rect.position + Vector2(76 + float(pattern_event.tick) * 18.0, 9)
 			if pattern_event.action == "step":
-				draw_circle(symbol_position, 3.0 if pattern_event.tick % 2 == 0 else 2.2, Color("ffc45e"))
+				draw_circle(symbol_position, 3.0, Color("ffc45e"))
 			else:
 				var diamond := PackedVector2Array([
 					symbol_position + Vector2(0, -4), symbol_position + Vector2(4, 0),

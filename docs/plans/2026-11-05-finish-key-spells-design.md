@@ -7,8 +7,8 @@ The battle uses one continuous public beat clock. Player commands never start, s
 The first demo supports two deliberately different rhythms:
 
 - FLARE: step on a whole beat, then finish on the next whole beat.
-- MEND: step on a whole beat, a second step on the intervening half beat, then finish on the next whole beat.
+- MEND: step on two consecutive whole beats, then finish on the third whole beat.
 
-Inputs are quantized on an eighth-note grid. A command may begin only on a whole beat, while the second MEND step may occupy a half beat. Every recorded event also stores its absolute eight-position ring phase so its icon appears where the public clock actually was.
+Inputs are quantized on a whole-beat grid. Every recorded event also stores its absolute four-position ring phase so its icon appears where the public clock actually was. An earlier half-beat MEND prototype was removed because it felt too fast at 120 BPM.
 
 An invalid finish clears the command immediately. The next valid whole beat can begin a new command. Completed events remain visible briefly as feedback, but the outer cursor never resets.

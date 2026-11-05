@@ -4,7 +4,7 @@
 
 **Goal:** Replace fixed four-beat phrase expiry with immediately resolved, variable-length spell rhythms while preserving the continuous global ring.
 
-**Architecture:** A pure `SpellCommandBuffer` quantizes step and finish inputs to a half-beat grid and recognizes a command only when the finish key is pressed. The battle scene owns presentation and effects, while the command buffer returns completed events with absolute ring positions for drawing.
+**Architecture:** A pure `SpellCommandBuffer` quantizes step and finish inputs to a whole-beat grid and recognizes a command only when the finish key is pressed. The battle scene owns presentation and effects, while the command buffer returns completed events with absolute ring positions for drawing.
 
 **Tech Stack:** Godot 4.7, GDScript, script-based unit tests, custom `_draw()` UI.
 
@@ -17,9 +17,9 @@
 - Create: `tests/test_spell_command_buffer.gd`
 - Modify: `tests/run_tests.gd`
 
-1. Write failing tests for FLARE, half-beat MEND, invalid starts, failed finishes, absolute ring phase, and timing grades.
+1. Write failing tests for two-beat FLARE, three-beat MEND, invalid starts, failed finishes, absolute ring phase, and timing grades.
 2. Run the full suite and confirm the new parser is missing.
-3. Implement half-beat quantization and finish-key matching.
+3. Implement whole-beat quantization and finish-key matching.
 4. Rerun the full suite and confirm all tests pass.
 
 ### Task 2: Replace the fixed phrase lifecycle
@@ -42,16 +42,16 @@
 - Modify: `tests/capture_beatspell_preview.gd`
 
 1. Teach FLARE first and MEND second; stop teaching the unused shield spell.
-2. Draw whole-beat and half-beat command positions on the continuous ring.
+2. Draw command positions on the four whole-beat corners of the continuous ring.
 3. Replace three fixed-width cards with two readable rhythm cards.
-4. Capture active half-beat and Boss warning states for visual review.
+4. Capture active three-beat MEND and Boss warning states for visual review.
 
 ### Task 4: Verify and document
 
 **Files:**
 - Modify: `README.md`
 
-1. Document finish-key resolution and half-beat input.
+1. Document finish-key resolution and whole-beat input.
 2. Run all unit tests.
 3. Smoke-test the main scene and calibration scene.
 4. Inspect generated screenshots and commit the change.
