@@ -1,5 +1,8 @@
 extends RefCounted
 
+const BEAT_MS := 500
+const BAR_MS := 2000
+
 
 func tutorial_skill(bar_index: int) -> String:
 	if bar_index < 0 or bar_index >= 9:
@@ -40,3 +43,12 @@ func is_attack_bar(bar_index: int, phase: int) -> bool:
 
 func attack_damage(phase: int) -> int:
 	return 1 if phase <= 1 else 2
+
+
+func attack_cue_index(song_time_ms: int, bar_index: int, phase: int) -> int:
+	if not is_attack_bar(bar_index, phase):
+		return -1
+	var time_in_bar := song_time_ms - bar_index * BAR_MS
+	if time_in_bar < 0 or time_in_bar >= BAR_MS:
+		return -1
+	return clampi(int(floor(float(time_in_bar) / float(BEAT_MS))), 0, 3)

@@ -28,6 +28,13 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_damage(1), 1, "phase one attack is forgiving")
 	_expect_equal(failures, director.attack_damage(2), 2, "phase two attack is dangerous")
 	_expect_equal(failures, director.attack_damage(3), 2, "phase three stays survivable")
+
+	_expect_equal(failures, director.attack_cue_index(15_999, 7, 1), -1, "safe bar has no warning cue")
+	_expect_equal(failures, director.attack_cue_index(16_000, 8, 1), 0, "attack warning starts on its first beat")
+	_expect_equal(failures, director.attack_cue_index(16_500, 8, 1), 1, "attack warning advances on beat two")
+	_expect_equal(failures, director.attack_cue_index(17_000, 8, 1), 2, "attack warning advances on beat three")
+	_expect_equal(failures, director.attack_cue_index(17_500, 8, 1), 3, "attack warning reaches the final beat")
+	_expect_equal(failures, director.attack_cue_index(18_000, 8, 1), -1, "attack warning ends at the bar boundary")
 	return failures
 
 

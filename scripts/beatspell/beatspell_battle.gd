@@ -62,6 +62,7 @@ var _result_text := ""
 var _paused := false
 var _pause_started_ticks := 0
 var _count_click_index := -1
+var _last_attack_cue_key := -1
 var _error_text := ""
 
 
@@ -91,6 +92,7 @@ func _process(_delta: float) -> void:
 		) * 1000.0))
 		_update_command()
 		_update_bar()
+		_update_attack_cue(maxi(0, _song_time_ms - _audio_offset_ms))
 		if _song_time_ms >= BATTLE_DURATION_MS and not _finished:
 			_finish_battle("RITUAL EXPIRED", false)
 	queue_redraw()
@@ -138,6 +140,7 @@ func _start_run() -> void:
 	_result_text = ""
 	_paused = false
 	_count_click_index = -1
+	_last_attack_cue_key = -1
 	for player in _music_players.values():
 		player.stop()
 		player.stream_paused = false
@@ -246,6 +249,21 @@ func _is_attack_bar(bar: int) -> bool:
 	return _director.is_attack_bar(bar, _active_phase)
 
 
+func _update_attack_cue(adjusted_time_ms: int) -> void:
+	var cue_index: int = _director.attack_cue_index(adjusted_time_ms, _bar_index, _active_phase)
+	if cue_index < 0:
+		_last_attack_cue_key = -1
+		return
+	var cue_key := _bar_index * 4 + cue_index
+	if cue_key == _last_attack_cue_key:
+		return
+	_last_attack_cue_key = cue_key
+	var player: AudioStreamPlayer = _sfx_players.get("warning")
+	if player != null:
+		player.pitch_scale = 1.28 if cue_index == 3 else 0.94 + float(cue_index) * 0.06
+		player.play()
+
+
 func _show_feedback(text: String, color: Color, duration_ms: int) -> void:
 	_feedback = text
 	_feedback_color = color
@@ -290,7 +308,7 @@ func _setup_music() -> bool:
 
 
 func _setup_sfx() -> void:
-	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "heal", "boss", "error", "count"]:
+	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "heal", "boss", "warning", "error", "count"]:
 		var player := AudioStreamPlayer.new()
 		player.stream = _make_sfx(sound_name)
 		player.volume_db = -10.0 if sound_name in ["charge", "cast", "count"] else -7.0
@@ -319,7 +337,8 @@ func _update_count_in_audio() -> void:
 func _make_sfx(kind: String) -> AudioStreamWAV:
 	var duration: float = float({
 		"charge": 0.09, "cast": 0.08, "fireball": 0.30, "shield": 0.34,
-		"shield_block": 0.22, "heal": 0.42, "boss": 0.28, "error": 0.13, "count": 0.04,
+		"shield_block": 0.22, "heal": 0.42, "boss": 0.28, "warning": 0.075,
+		"error": 0.13, "count": 0.04,
 	}.get(kind, 0.1))
 	var mix_rate := 44100
 	var sample_count := int(float(mix_rate) * duration)
@@ -347,6 +366,8 @@ func _make_sfx(kind: String) -> AudioStreamWAV:
 			"boss":
 				var growl := 62.0 + sin(t * 31.0) * 9.0
 				sample = (sin(TAU * growl * t) + sin(TAU * growl * 1.48 * t) * 0.55) * envelope
+			"warning":
+				sample = (sin(TAU * 220.0 * t) + sin(TAU * 440.0 * t) * 0.42) * envelope
 			"error":
 				sample = (sin(TAU * 92.0 * t) + sin(TAU * 103.0 * t)) * envelope * 0.65
 			"count":
@@ -463,7 +484,8 @@ func _draw_boss() -> void:
 	if now < _boss_hit_until:
 		center.x += -3.0 if now % 2 == 0 else 3.0
 	if warning:
-		var attack_progress := fmod(float(maxi(0, _song_time_ms)), float(BAR_MS)) / float(BAR_MS)
+		var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+		var attack_progress := fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
 		draw_circle(center, 39.0 + attack_progress * 8.0, Color(1.0, 0.18, 0.35, 0.06 + attack_progress * 0.12))
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, Color("ff4f70"), 2.0)
 	var phase_colors := [Color("4a215d"), Color("692851"), Color("7d203f")]
@@ -479,8 +501,20 @@ func _draw_boss() -> void:
 	draw_line(center + Vector2(0, 18), center + Vector2(0, 34), Color("ffb65e"), 2.0)
 	draw_circle(center + Vector2(0, 36), 4.0, Color("ffb65e"))
 	if warning:
-		var font := ThemeDB.fallback_font
-		draw_string(font, Vector2(220, 119), "STRIKE INCOMING", HORIZONTAL_ALIGNMENT_CENTER, 78, 6, Color("ff668e"))
+		var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+		var cue_index: int = _director.attack_cue_index(adjusted_time, _bar_index, _active_phase)
+		var beat_phase := fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
+		for pip_index in 4:
+			var pip_position := Vector2(241 + pip_index * 12, 117)
+			var lit := pip_index <= cue_index
+			var pip_color := Color("ff668e") if lit else Color("4d2944")
+			pip_color.a = 0.94 if lit else 0.55
+			var pip_size := 3.5 + (1.0 - beat_phase) * 1.2 if pip_index == cue_index else 3.0
+			var pip := PackedVector2Array([
+				pip_position + Vector2(0, -pip_size), pip_position + Vector2(pip_size, 0),
+				pip_position + Vector2(0, pip_size), pip_position + Vector2(-pip_size, 0),
+			])
+			draw_colored_polygon(pip, pip_color)
 
 
 func _draw_spell_effects() -> void:
