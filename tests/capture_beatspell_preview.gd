@@ -15,10 +15,10 @@ func _capture() -> void:
 	stage.set("_bar_index", 0)
 	stage.set("_last_skill", "fireball")
 	stage.set("_skill_flash_until", Time.get_ticks_msec() + 420)
-	stage.set("_phrase_inputs", [
-		{"slot": 0, "action": "charge", "grade": "perfect", "offset_ms": 8},
-		{"slot": 1, "action": "cast", "grade": "perfect", "offset_ms": -11},
-	])
+	var phrase = stage.get("_phrase")
+	phrase.reset()
+	phrase.register_input(510, "charge", 500.0)
+	phrase.register_input(990, "cast", 500.0)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame
@@ -32,10 +32,9 @@ func _capture() -> void:
 	stage.get("_battle").boss_hp = 20
 	stage.set("_last_skill", "")
 	stage.set("_skill_flash_until", 0)
-	stage.set("_phrase_inputs", [
-		{"slot": 0, "action": "charge", "grade": "perfect", "offset_ms": 4},
-		{"slot": 1, "action": "charge", "grade": "perfect", "offset_ms": 19},
-	])
+	phrase.reset()
+	phrase.register_input(16_000, "charge", 500.0)
+	phrase.register_input(16_500, "charge", 500.0)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

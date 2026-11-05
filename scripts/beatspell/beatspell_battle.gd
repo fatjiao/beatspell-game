@@ -3,6 +3,7 @@ extends Control
 const SpellMatcherScript = preload("res://scripts/beatspell/spell_matcher.gd")
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
+const RollingPhraseScript = preload("res://scripts/beatspell/rolling_phrase.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
 const BPM := 120.0
@@ -26,6 +27,7 @@ const SKILL_COLORS := {
 var _matcher = SpellMatcherScript.new()
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
+var _phrase = RollingPhraseScript.new()
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
 var _audio_ready := false
@@ -35,8 +37,6 @@ var _song_time_ms := -2000
 var _music_started := false
 var _bar_index := -1
 var _active_phase := 1
-var _phrase_inputs: Array = []
-var _phrase_broken := false
 var _feedback := "LISTEN TO THE PULSE"
 var _feedback_color := Color("dad7ff")
 var _feedback_until := 0
@@ -79,6 +79,7 @@ func _process(_delta: float) -> void:
 			+ AudioServer.get_time_since_last_mix()
 			- AudioServer.get_output_latency()
 		) * 1000.0))
+		_update_phrase()
 		_update_bar()
 		if _song_time_ms >= BATTLE_DURATION_MS and not _finished:
 			_finish_battle("RITUAL EXPIRED", false)
@@ -116,8 +117,7 @@ func _start_run() -> void:
 	_music_started = false
 	_bar_index = -1
 	_active_phase = 1
-	_phrase_inputs.clear()
-	_phrase_broken = false
+	_phrase.reset()
 	_feedback = "LISTEN TO THE PULSE"
 	_feedback_color = Color("dad7ff")
 	_feedback_until = 0
@@ -137,7 +137,7 @@ func _start_music() -> void:
 	_music_started = true
 	_song_time_ms = 0
 	_bar_index = 0
-	_phrase_inputs.clear()
+	_phrase.reset()
 	for player in _music_players.values():
 		player.play(0.0)
 	_show_feedback("FORM A SPELL", Color("dad7ff"), 900)
@@ -159,58 +159,66 @@ func _update_bar() -> void:
 	if next_phase != _active_phase:
 		_active_phase = next_phase
 		_show_feedback("PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], Color("ff9a6b"), 1050)
-	_phrase_inputs.clear()
-	_phrase_broken = false
+
+
+func _update_phrase() -> void:
+	if _finished or not _phrase.is_active():
+		return
+	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+	if _phrase.is_due(adjusted_time, BEAT_MS):
+		_resolve_phrase()
 
 
 func _register_action(action: String) -> void:
 	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
-	var current_bar := int(floor(float(adjusted_time) / float(BAR_MS)))
-	if current_bar != _bar_index:
-		_update_bar()
-	var phrase_time := adjusted_time - current_bar * BAR_MS
-	var quantized: Dictionary = _matcher.quantize_input(phrase_time, BEAT_MS)
+	_update_phrase()
+	_update_bar()
+	if _finished:
+		return
 	_last_action = action
 	_action_flash_until = Time.get_ticks_msec() + 150
 	_play_sfx(action)
-	if not quantized.valid:
-		_phrase_broken = true
+	var registration: Dictionary = _phrase.register_input(adjusted_time, action, BEAT_MS)
+	if registration.status == "expired":
+		_resolve_phrase()
+		if _finished:
+			return
+		registration = _phrase.register_input(adjusted_time, action, BEAT_MS)
+	if registration.status == "off_pulse":
 		_show_feedback("OFF PULSE", Color("ff668e"), 420)
 		_play_sfx("error")
 		return
-	for existing in _phrase_inputs:
-		if existing.slot == quantized.slot:
-			_phrase_broken = true
-			_show_feedback("ONE MOVE PER BEAT", Color("ff668e"), 520)
-			_play_sfx("error")
-			return
-	_phrase_inputs.append({
-		"slot": quantized.slot,
-		"action": action,
-		"grade": quantized.grade,
-		"offset_ms": quantized.offset_ms,
-	})
-	_phrase_inputs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.slot < b.slot)
+	if registration.status == "duplicate":
+		_show_feedback("ONE MOVE PER BEAT", Color("ff668e"), 520)
+		_play_sfx("error")
+		return
 	_show_feedback("CHARGE" if action == "charge" else "CAST", Color("ffc45e") if action == "charge" else Color("5de7ff"), 260)
 
 
 func _resolve_bar(resolved_bar: int) -> void:
 	if _finished:
 		return
+	if _is_attack_bar(resolved_bar):
+		_resolve_boss_attack()
+
+
+func _resolve_phrase() -> void:
+	if _finished or not _phrase.is_active():
+		return
 	var result := {"skill": "", "grade": "miss"}
-	if not _phrase_broken and not _phrase_inputs.is_empty():
-		result = _matcher.match_phrase(_phrase_inputs)
+	var had_input: bool = not _phrase.inputs.is_empty()
+	var was_broken: bool = _phrase.broken
+	if not was_broken and had_input:
+		result = _matcher.match_phrase(_phrase.inputs)
+	_phrase.reset()
 	if not result.skill.is_empty():
 		_cast_skill(result.skill, result.grade)
-	elif not _phrase_inputs.is_empty() or _phrase_broken:
+	elif had_input or was_broken:
 		_battle.cast_spell("")
 		_show_feedback("RHYTHM BROKE", Color("ff668e"), 760)
 		_play_sfx("error")
 	if _battle.is_victory():
 		_finish_battle("BEAST DISPELLED", true)
-		return
-	if _is_attack_bar(resolved_bar):
-		_resolve_boss_attack()
 
 
 func _cast_skill(skill: String, grade: String) -> void:
@@ -520,24 +528,34 @@ func _draw_spell_effects() -> void:
 func _draw_beat_ring() -> void:
 	var center := Vector2(160, 82)
 	var beat_phase := 0.0
-	var slot := 0
+	var slot := -1
+	var phrase_progress := 0.0
+	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
 	if _song_time_ms >= 0:
 		beat_phase = fmod(float(_song_time_ms), BEAT_MS) / BEAT_MS
-		slot = int(floor(fmod(float(_song_time_ms), float(BAR_MS)) / BEAT_MS))
+		if _phrase.is_active():
+			slot = _phrase.current_slot(adjusted_time, BEAT_MS)
+			phrase_progress = _phrase.progress(adjusted_time, BEAT_MS)
 	var radius := 22.0 + (1.0 - beat_phase) * 4.0
 	draw_circle(center, radius, Color(0.06, 0.05, 0.14, 0.92))
-	draw_arc(center, radius, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - beat_phase), 32, Color("8d7dff"), 2.0)
+	if _phrase.is_active():
+		draw_arc(center, radius, -PI / 2.0, -PI / 2.0 + TAU * phrase_progress, 32, Color("8d7dff"), 2.0)
+		var head_angle := -PI / 2.0 + TAU * phrase_progress
+		draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.2, Color("ffffff"))
+	else:
+		draw_arc(center, radius, 0, TAU, 32, Color(0.55, 0.49, 1.0, 0.30), 1.0)
+		draw_circle(center, 3.0 + (1.0 - beat_phase) * 2.0, Color(0.55, 0.49, 1.0, 0.65))
 	for marker_index in 4:
 		var angle := -PI / 2.0 + float(marker_index) * TAU / 4.0
 		var marker_position := center + Vector2(cos(angle), sin(angle)) * 16.0
 		var marker_color := Color("dad7ff") if marker_index == slot else Color("514a72")
 		draw_circle(marker_position, 2.0 if marker_index == slot else 1.5, marker_color)
-	for entry in _phrase_inputs:
+	for entry in _phrase.inputs:
 		var angle := -PI / 2.0 + float(entry.slot) * TAU / 4.0
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
 		var color := Color("ffc45e") if entry.action == "charge" else Color("45e6ff")
 		draw_circle(input_position, 3.0, color)
-	if _phrase_broken:
+	if _phrase.broken:
 		draw_line(center + Vector2(-7, -7), center + Vector2(7, 7), Color("ff668e"), 2.0)
 		draw_line(center + Vector2(-7, 7), center + Vector2(7, -7), Color("ff668e"), 2.0)
 
