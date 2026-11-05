@@ -62,7 +62,6 @@ var _miss_count := 0
 var _bad_tap_count := 0
 var _director = StageDirectorScript.new()
 var _current_section_id := ""
-var _section_transition_until := 0
 var _glitch_until := 0
 var _hit_burst_until := 0
 
@@ -156,7 +155,6 @@ func _start_run() -> void:
 	_miss_count = 0
 	_bad_tap_count = 0
 	_current_section_id = ""
-	_section_transition_until = 0
 	_glitch_until = 0
 	_hit_burst_until = 0
 	for player in _music_players.values():
@@ -233,7 +231,6 @@ func _update_stage_direction() -> void:
 	if section.id == _current_section_id:
 		return
 	_current_section_id = section.id
-	_section_transition_until = Time.get_ticks_msec() + (1050 if section.id == "drums" else 760)
 	if section.instrument != "ensemble":
 		_active_instrument = section.instrument
 
@@ -383,7 +380,6 @@ func _draw() -> void:
 	else:
 		_draw_cinematic_stage()
 	_draw_feedback()
-	_draw_section_transition()
 	if _song_time_ms < 0 and not _paused:
 		_draw_count_in()
 	if _paused:
@@ -521,48 +517,53 @@ func _draw_fixed_key_anchors(font: Font, section: Dictionary) -> void:
 		var ensemble_available: bool = section.instrument == "ensemble"
 		var section_active: bool = section.instrument == instrument or target_imminent
 		var pressed: bool = int(_pad_flash_until.get(instrument, 0)) > now
-		var fill := Color(0.02, 0.02, 0.08, 0.82)
+		var lamp_alpha := 0.66 if section_active else (0.34 if ensemble_available else 0.16)
 		if pressed:
-			fill = Color(color, 0.48)
-		draw_circle(center, 14.0, fill)
-		var outline := color
-		outline.a = 0.92 if section_active else (0.48 if ensemble_available else 0.24)
-		draw_arc(center, 14.0, 0, TAU, 28, outline, 2.0 if section_active else 1.0)
-		var inactive_text := Color("aaa6c0") if ensemble_available else Color("77738e")
-		draw_string(font, center + Vector2(-8, 6), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 16, 13, Color.WHITE if section_active else inactive_text)
-		draw_string(font, center + Vector2(-25, 27), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_CENTER, 50, 6, color if section_active else inactive_text)
+			lamp_alpha = 1.0
+		var lamp_color := color
+		lamp_color.a = lamp_alpha
+		draw_rect(Rect2(center + Vector2(-13, -2), Vector2(26, 4)), Color(0.02, 0.02, 0.08, 0.76))
+		draw_rect(Rect2(center + Vector2(-12, -1), Vector2(24, 2)), lamp_color)
+		var inactive_text := Color("9995ad") if ensemble_available else Color("69667c")
+		draw_string(font, center + Vector2(-4, 11), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 8, 6, Color("d8d5ff") if section_active else inactive_text)
 
 		if target_imminent:
 			var cue_progress: float = _director.cue_progress(next_delta_ms)
-			var cue_radius: float = lerpf(29.0, 16.0, cue_progress)
-			var cue_color := color
-			cue_color.a = 0.45 + cue_progress * 0.55
-			draw_arc(center, cue_radius, 0, TAU, 36, cue_color, 2.0)
-			for corner in 4:
-				var angle := PI / 4.0 + float(corner) * PI / 2.0
-				var marker_from := center + Vector2.from_angle(angle) * (cue_radius - 3.0)
-				var marker_to := center + Vector2.from_angle(angle) * (cue_radius + 3.0)
-				draw_line(marker_from, marker_to, cue_color, 1.0)
+			_draw_floor_cue(center, color, cue_progress)
 
 		if instrument == _active_instrument and now < _hit_burst_until:
-			_draw_anchor_hit_burst(center, color, now)
+			_draw_floor_hit_burst(center, color, now)
 
 
-func _draw_anchor_hit_burst(center: Vector2, color: Color, now: int) -> void:
+func _draw_floor_cue(center: Vector2, color: Color, progress: float) -> void:
+	var glow := color
+	glow.a = 0.035 + progress * 0.10
+	var half_width := lerpf(15.0, 7.0, progress)
+	var beam := PackedVector2Array([
+		center + Vector2(-half_width, -1),
+		center + Vector2(half_width, -1),
+		center + Vector2(5, -68),
+		center + Vector2(-5, -68),
+	])
+	draw_colored_polygon(beam, glow)
+	var floor_glow := color
+	floor_glow.a = 0.08 + progress * 0.18
+	draw_ellipse_shadow(center, 18.0 + progress * 5.0, 3.0 + progress * 2.0, floor_glow)
+	draw_rect(Rect2(center + Vector2(-14, -2), Vector2(28, 4)), Color(color, 0.45 + progress * 0.45))
+
+
+func _draw_floor_hit_burst(center: Vector2, color: Color, now: int) -> void:
 	var life := clampf(float(_hit_burst_until - now) / 260.0, 0.0, 1.0)
 	var burst_color := color
-	burst_color.a = life * 0.70
-	draw_arc(center, 16.0 + (1.0 - life) * 20.0, 0, TAU, 36, burst_color, 2.0)
-	for ray_index in 8:
-		var ray_angle := TAU * float(ray_index) / 8.0
-		var ray_from := center + Vector2.from_angle(ray_angle) * 18.0
-		var ray_to := center + Vector2.from_angle(ray_angle) * (23.0 + (1.0 - life) * 8.0)
-		draw_line(ray_from, ray_to, burst_color, 1.0)
+	burst_color.a = life * 0.42
+	draw_ellipse_shadow(center, 20.0 + (1.0 - life) * 24.0, 4.0 + (1.0 - life) * 4.0, burst_color)
+	draw_line(center + Vector2(-4, -4), center + Vector2(-9, -10 - (1.0 - life) * 6.0), burst_color, 1.0)
+	draw_line(center + Vector2(4, -4), center + Vector2(9, -10 - (1.0 - life) * 6.0), burst_color, 1.0)
 
 
 func _instrument_anchor(instrument: String) -> Vector2:
 	var index := INSTRUMENTS.find(instrument)
-	return Vector2(55.0 + float(maxi(0, index)) * 70.0, 142.0)
+	return Vector2(55.0 + float(maxi(0, index)) * 70.0, 151.0)
 
 
 func _focus_instrument(section: Dictionary) -> String:
@@ -593,23 +594,6 @@ func _draw_feedback() -> void:
 	var border_color := _feedback_color
 	border_color.a = clampf(remaining * 0.25, 0.0, 0.25)
 	draw_rect(Rect2(2, 27, 316, 138), border_color, false, 2.0)
-
-
-func _draw_section_transition() -> void:
-	if _debug_tracks or _finished or _current_section_id.is_empty():
-		return
-	var now := Time.get_ticks_msec()
-	if now >= _section_transition_until:
-		return
-	var section: Dictionary = _director.section_at(_song_time_ms)
-	var instrument: String = _focus_instrument(section)
-	var color: Color = COLORS[instrument]
-	var remaining := clampf(float(_section_transition_until - now) / 760.0, 0.0, 1.0)
-	var panel_alpha := minf(0.82, remaining * 1.5)
-	draw_rect(Rect2(78, 29, 164, 18), Color(0.02, 0.02, 0.08, panel_alpha))
-	draw_rect(Rect2(78, 46, 164, 1), color)
-	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(84, 41), section.instruction, HORIZONTAL_ALIGNMENT_CENTER, 152, 7, color)
 
 
 func _draw_count_in() -> void:

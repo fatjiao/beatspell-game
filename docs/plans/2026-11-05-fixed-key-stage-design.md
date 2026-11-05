@@ -7,7 +7,7 @@ A single target that changed between D, F, J, and K removed spatial memory. The 
 ## Validated direction
 
 - D, F, J, and K remain permanently ordered from left to right.
-- A ring appears around the next required key one second early and shrinks onto that key at the hit time.
+- Each key is a small floor light with a tiny letter. The next target brightens its local floor glow during the final second; no ring or large prompt appears.
 - Individual sections fully light only their instrument. The final ensemble keeps every key readable but fully lights only the imminent target.
 - No notes travel across the screen, and no target changes position.
 - Loop returns to the center so the four instrument anchors read as one band around the performer.
@@ -15,4 +15,4 @@ A single target that changed between D, F, J, and K removed spatial memory. The 
 
 ## Acceptance criteria
 
-The single-instrument and ensemble screenshots must show D/F/J/K in identical positions. The intended input must be identifiable by position and letter without relying on color. A new player should only need to understand one rule: press the fixed key when its outer ring closes.
+The single-instrument and ensemble screenshots must show D/F/J/K in identical positions. The performer and scene must dominate the image, while the letters remain readable as secondary help. The target should be discoverable from its local light without looking like a tutorial overlay.
