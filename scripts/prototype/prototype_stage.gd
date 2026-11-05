@@ -511,17 +511,10 @@ func _draw_flowing_staff(font: Font, section: Dictionary) -> void:
 
 	_draw_score_beat_guides()
 	var now := Time.get_ticks_msec()
-	for row_index in INSTRUMENTS.size():
-		var instrument: String = INSTRUMENTS[row_index]
-		var row_y: float = _flowing_staff.row_center(instrument)
-		var color: Color = COLORS[instrument]
-		var pressed: bool = int(_pad_flash_until.get(instrument, 0)) > now
-		var section_active: bool = section.instrument == instrument or section.instrument == "ensemble"
-		if section_active or pressed:
-			var row_glow := color
-			row_glow.a = 0.055 if not pressed else 0.18
-			draw_rect(Rect2(0, row_y - 6, 320, 12), row_glow)
-		_draw_instrument_staff(font, instrument, row_y, section_active)
+	var staff_center := 151.0
+	for line_offset in [-8.0, -4.0, 0.0, 4.0, 8.0]:
+		draw_line(Vector2(48, staff_center + line_offset), Vector2(316, staff_center + line_offset), Color(0.82, 0.81, 0.94, 0.30), 1.0)
+	_draw_compact_key_legend(font, section, now)
 
 	draw_line(
 		Vector2(_flowing_staff.HIT_X, _flowing_staff.PANEL_TOP + 2),
@@ -535,15 +528,18 @@ func _draw_flowing_staff(font: Font, section: Dictionary) -> void:
 		_draw_staff_hit_burst(now)
 
 
-func _draw_instrument_staff(font: Font, instrument: String, row_y: float, active: bool) -> void:
-	var color: Color = COLORS[instrument]
-	var line_color := Color(0.78, 0.77, 0.91, 0.28 if active else 0.16)
-	for line_offset in [-4.0, -2.0, 0.0, 2.0, 4.0]:
-		draw_line(Vector2(48, row_y + line_offset), Vector2(316, row_y + line_offset), line_color, 1.0)
-	var key_color := color
-	key_color.a = 0.95 if active else 0.52
-	draw_string(font, Vector2(5, row_y + 3), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 10, 7, key_color)
-	draw_string(font, Vector2(17, row_y + 2), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_LEFT, 27, 5, Color(0.82, 0.81, 0.94, 0.88 if active else 0.48))
+func _draw_compact_key_legend(font: Font, section: Dictionary, now: int) -> void:
+	for instrument_index in INSTRUMENTS.size():
+		var instrument: String = INSTRUMENTS[instrument_index]
+		var key_x := 5.0 + float(instrument_index) * 10.0
+		var active: bool = section.instrument == instrument or section.instrument == "ensemble"
+		var pressed: bool = int(_pad_flash_until.get(instrument, 0)) > now
+		var key_color: Color = COLORS[instrument]
+		key_color.a = 1.0 if active or pressed else 0.48
+		if pressed:
+			draw_circle(Vector2(key_x + 4, 151), 6.0, Color(key_color, 0.16))
+		draw_string(font, Vector2(key_x, 153), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 8, 6, key_color)
+		draw_rect(Rect2(key_x + 1, 157, 6, 1), Color(key_color, 0.75 if active else 0.25))
 
 
 func _draw_score_beat_guides() -> void:
@@ -575,9 +571,7 @@ func _draw_staff_events(font: Font) -> void:
 		var note_x: float = _flowing_staff.note_x(_song_time_ms, chart_event.time_ms)
 		if note_x < 48.0 or note_x > 316.0:
 			continue
-		var row_y: float = _flowing_staff.row_center(chart_event.instrument)
-		var pitch_offset := float([-2, 0, 2, -1, 1][posmod(int(chart_event.time_ms / 500), 5)])
-		var note_position := Vector2(note_x, row_y + pitch_offset)
+		var note_position := Vector2(note_x, _flowing_staff.note_y(chart_event.instrument))
 		var color: Color = COLORS[chart_event.instrument]
 		var approach := clampf(1.0 - float(maxi(0, delta_ms)) / 1000.0, 0.0, 1.0)
 		if approach > 0.0:
@@ -604,7 +598,7 @@ func _draw_score_note(position: Vector2, instrument: String, color: Color) -> vo
 
 
 func _draw_staff_hit_burst(now: int) -> void:
-	var row_y: float = _flowing_staff.row_center(_active_instrument)
+	var row_y: float = _flowing_staff.note_y(_active_instrument)
 	var color: Color = COLORS[_active_instrument]
 	var life := clampf(float(_hit_burst_until - now) / 260.0, 0.0, 1.0)
 	color.a = life * 0.55

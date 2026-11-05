@@ -12,8 +12,11 @@ func run() -> Array[String]:
 	_expect(failures, staff.is_note_visible(4000), "four-second lookahead is visible")
 	_expect(failures, not staff.is_note_visible(-201), "old note is hidden")
 	_expect(failures, not staff.is_note_visible(4001), "distant note is hidden")
-	_expect_float(failures, staff.row_center("drums"), 115.0, "drums row")
-	_expect_float(failures, staff.row_center("lead"), 154.0, "lead row")
+	_expect(failures, staff.PANEL_BOTTOM - staff.PANEL_TOP <= 34.0, "score panel stays compact")
+	_expect_float(failures, staff.note_y("drums"), 143.0, "drums position")
+	_expect_float(failures, staff.note_y("bass"), 147.0, "bass position")
+	_expect_float(failures, staff.note_y("synth"), 153.0, "synth position")
+	_expect_float(failures, staff.note_y("lead"), 159.0, "lead position")
 	return failures
 
 
@@ -25,4 +28,3 @@ func _expect(failures: Array[String], condition: bool, label: String) -> void:
 func _expect_float(failures: Array[String], actual: float, expected: float, label: String) -> void:
 	if not is_equal_approx(actual, expected):
 		failures.append("%s: expected %.2f, got %.2f" % [label, expected, actual])
-
