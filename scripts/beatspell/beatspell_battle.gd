@@ -1,9 +1,8 @@
 extends Control
 
-const SpellMatcherScript = preload("res://scripts/beatspell/spell_matcher.gd")
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
-const RollingPhraseScript = preload("res://scripts/beatspell/rolling_phrase.gd")
+const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
 const BPM := 120.0
@@ -23,11 +22,18 @@ const SKILL_COLORS := {
 	"shield": Color("45e6ff"),
 	"heal": Color("69f0a5"),
 }
+const DISPLAY_PATTERNS := {
+	"fireball": [{"tick": 0, "action": "step"}, {"tick": 2, "action": "finish"}],
+	"heal": [
+		{"tick": 0, "action": "step"},
+		{"tick": 1, "action": "step"},
+		{"tick": 2, "action": "finish"},
+	],
+}
 
-var _matcher = SpellMatcherScript.new()
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
-var _phrase = RollingPhraseScript.new()
+var _command = SpellCommandBufferScript.new()
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
 var _audio_ready := false
@@ -37,6 +43,8 @@ var _song_time_ms := -2000
 var _music_started := false
 var _bar_index := -1
 var _active_phase := 1
+var _recent_command: Array = []
+var _recent_command_until := 0
 var _feedback := "LISTEN TO THE PULSE"
 var _feedback_color := Color("dad7ff")
 var _feedback_until := 0
@@ -79,7 +87,7 @@ func _process(_delta: float) -> void:
 			+ AudioServer.get_time_since_last_mix()
 			- AudioServer.get_output_latency()
 		) * 1000.0))
-		_update_phrase()
+		_update_command()
 		_update_bar()
 		if _song_time_ms >= BATTLE_DURATION_MS and not _finished:
 			_finish_battle("RITUAL EXPIRED", false)
@@ -117,7 +125,8 @@ func _start_run() -> void:
 	_music_started = false
 	_bar_index = -1
 	_active_phase = 1
-	_phrase.reset()
+	_command.reset()
+	_recent_command.clear()
 	_feedback = "LISTEN TO THE PULSE"
 	_feedback_color = Color("dad7ff")
 	_feedback_until = 0
@@ -137,7 +146,7 @@ func _start_music() -> void:
 	_music_started = true
 	_song_time_ms = 0
 	_bar_index = 0
-	_phrase.reset()
+	_command.reset()
 	for player in _music_players.values():
 		player.play(0.0)
 	_show_feedback("FORM A SPELL", Color("dad7ff"), 900)
@@ -161,38 +170,50 @@ func _update_bar() -> void:
 		_show_feedback("PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], Color("ff9a6b"), 1050)
 
 
-func _update_phrase() -> void:
-	if _finished or not _phrase.is_active():
+func _update_command() -> void:
+	if _finished:
 		return
 	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
-	if _phrase.is_due(adjusted_time, BEAT_MS):
-		_resolve_phrase()
+	if _command.expire_if_needed(adjusted_time, BEAT_MS):
+		_show_feedback("LOST THE PHRASE", Color("ff668e"), 620)
+		_play_sfx("error")
 
 
 func _register_action(action: String) -> void:
 	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
-	_update_phrase()
+	_update_command()
 	_update_bar()
 	if _finished:
 		return
 	_last_action = action
 	_action_flash_until = Time.get_ticks_msec() + 150
 	_play_sfx(action)
-	var registration: Dictionary = _phrase.register_input(adjusted_time, action, BEAT_MS)
-	if registration.status == "expired":
-		_resolve_phrase()
-		if _finished:
-			return
-		registration = _phrase.register_input(adjusted_time, action, BEAT_MS)
-	if registration.status == "off_pulse":
-		_show_feedback("OFF PULSE", Color("ff668e"), 420)
+	if action == "charge":
+		var registration: Dictionary = _command.register_step(adjusted_time, BEAT_MS)
+		match registration.status:
+			"accepted":
+				_show_feedback("STEP", Color("ffc45e"), 240)
+			"needs_whole_beat":
+				_show_feedback("FIND THE WHOLE BEAT", Color("ff668e"), 520)
+				_play_sfx("error")
+			"duplicate":
+				_show_feedback("ONE MOVE PER TICK", Color("ff668e"), 520)
+				_play_sfx("error")
+			_:
+				_show_feedback("OFF PULSE", Color("ff668e"), 420)
+				_play_sfx("error")
+		return
+	var result: Dictionary = _command.finish(adjusted_time, BEAT_MS)
+	_recent_command = result.events.duplicate(true)
+	_recent_command_until = Time.get_ticks_msec() + 520
+	if result.skill.is_empty():
+		_battle.cast_spell("")
+		_show_feedback("RHYTHM BROKE", Color("ff668e"), 620)
 		_play_sfx("error")
 		return
-	if registration.status == "duplicate":
-		_show_feedback("ONE MOVE PER BEAT", Color("ff668e"), 520)
-		_play_sfx("error")
-		return
-	_show_feedback("CHARGE" if action == "charge" else "CAST", Color("ffc45e") if action == "charge" else Color("5de7ff"), 260)
+	_cast_skill(result.skill, result.grade)
+	if _battle.is_victory():
+		_finish_battle("BEAST DISPELLED", true)
 
 
 func _resolve_bar(resolved_bar: int) -> void:
@@ -200,25 +221,6 @@ func _resolve_bar(resolved_bar: int) -> void:
 		return
 	if _is_attack_bar(resolved_bar):
 		_resolve_boss_attack()
-
-
-func _resolve_phrase() -> void:
-	if _finished or not _phrase.is_active():
-		return
-	var result := {"skill": "", "grade": "miss"}
-	var had_input: bool = not _phrase.inputs.is_empty()
-	var was_broken: bool = _phrase.broken
-	if not was_broken and had_input:
-		result = _matcher.match_phrase(_phrase.inputs)
-	_phrase.reset()
-	if not result.skill.is_empty():
-		_cast_skill(result.skill, result.grade)
-	elif had_input or was_broken:
-		_battle.cast_spell("")
-		_show_feedback("RHYTHM BROKE", Color("ff668e"), 760)
-		_play_sfx("error")
-	if _battle.is_victory():
-		_finish_battle("BEAST DISPELLED", true)
 
 
 func _cast_skill(skill: String, grade: String) -> void:
@@ -528,41 +530,51 @@ func _draw_spell_effects() -> void:
 func _draw_beat_ring() -> void:
 	var center := Vector2(160, 82)
 	var beat_phase := 0.0
-	var slot := -1
+	var current_ring_tick := -1
 	var cycle_progress := 0.0
 	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
 	if _song_time_ms >= 0:
 		beat_phase = fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
 		cycle_progress = fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
-		slot = int(floor(cycle_progress * 4.0))
+		current_ring_tick = int(floor(cycle_progress * 8.0))
 	var radius := 22.0 + (1.0 - beat_phase) * 4.0
 	draw_circle(center, radius, Color(0.06, 0.05, 0.14, 0.92))
 	draw_arc(center, radius, 0, TAU, 40, Color(0.55, 0.49, 1.0, 0.34), 1.0)
-	var beat_start_angle := -PI / 2.0 + float(slot) * TAU / 4.0
+	var beat_start_angle := -PI / 2.0 + float(current_ring_tick) * TAU / 8.0
 	var head_angle := -PI / 2.0 + TAU * cycle_progress
 	draw_arc(center, radius, beat_start_angle, head_angle, 10, Color("8d7dff"), 2.0)
 	draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.4, Color("ffffff"))
-	for marker_index in 4:
-		var angle := -PI / 2.0 + float(marker_index) * TAU / 4.0
+	for marker_index in 8:
+		var angle := -PI / 2.0 + float(marker_index) * TAU / 8.0
 		var marker_position := center + Vector2(cos(angle), sin(angle)) * 16.0
-		var marker_color := Color("dad7ff") if marker_index == slot else Color("514a72")
-		draw_circle(marker_position, 2.0 if marker_index == slot else 1.5, marker_color)
-	for entry in _phrase.inputs:
-		var angle := -PI / 2.0 + float(entry.ring_slot) * TAU / 4.0
+		var marker_color := Color("dad7ff") if marker_index == current_ring_tick else Color("514a72")
+		var marker_radius := 2.0 if marker_index == current_ring_tick else 1.5 if marker_index % 2 == 0 else 0.8
+		draw_circle(marker_position, marker_radius, marker_color)
+	var displayed_events: Array = _command.events
+	if displayed_events.is_empty() and Time.get_ticks_msec() < _recent_command_until:
+		displayed_events = _recent_command
+	for entry in displayed_events:
+		var angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 8.0
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
-		var color := Color("ffc45e") if entry.action == "charge" else Color("45e6ff")
-		draw_circle(input_position, 3.0, color)
-	if _phrase.broken:
+		if entry.action == "step":
+			draw_circle(input_position, 3.0, Color("ffc45e"))
+		else:
+			var diamond := PackedVector2Array([
+				input_position + Vector2(0, -4), input_position + Vector2(4, 0),
+				input_position + Vector2(0, 4), input_position + Vector2(-4, 0),
+			])
+			draw_colored_polygon(diamond, Color("45e6ff"))
+	if _command.broken:
 		draw_line(center + Vector2(-7, -7), center + Vector2(7, 7), Color("ff668e"), 2.0)
 		draw_line(center + Vector2(-7, 7), center + Vector2(7, -7), Color("ff668e"), 2.0)
 
 
 func _draw_spell_cards() -> void:
 	var font := ThemeDB.fallback_font
-	var cards := ["fireball", "shield", "heal"]
+	var cards := ["fireball", "heal"]
 	for card_index in cards.size():
 		var skill: String = cards[card_index]
-		var card_rect := Rect2(6 + card_index * 104, 130, 100, 32)
+		var card_rect := Rect2(7 + card_index * 153, 130, 146, 32)
 		var active := _last_skill == skill and Time.get_ticks_msec() < _skill_flash_until
 		var teaching := _director.tutorial_skill(_bar_index) == skill and not _finished
 		var color: Color = SKILL_COLORS[skill]
@@ -570,22 +582,20 @@ func _draw_spell_cards() -> void:
 		if teaching:
 			draw_rect(card_rect.grow(2.0), Color(color, 0.13), true)
 		draw_rect(card_rect, Color(color, 0.85 if active or teaching else 0.30), false, 2.0 if teaching else 1.0)
-		draw_string(font, card_rect.position + Vector2(7, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 45, 7, color)
-		var pattern: Array = _matcher.pattern_for(skill)
-		for slot_index in 4:
-			var symbol_position := card_rect.position + Vector2(59 + slot_index * 9, 9)
-			if pattern[slot_index] == "charge":
-				draw_circle(symbol_position, 3.0, Color("ffc45e"))
-			elif pattern[slot_index] == "cast":
+		draw_string(font, card_rect.position + Vector2(7, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 54, 7, color)
+		draw_line(card_rect.position + Vector2(76, 9), card_rect.position + Vector2(112, 9), Color("514a72"), 1.0)
+		for pattern_event in DISPLAY_PATTERNS[skill]:
+			var symbol_position := card_rect.position + Vector2(76 + float(pattern_event.tick) * 18.0, 9)
+			if pattern_event.action == "step":
+				draw_circle(symbol_position, 3.0 if pattern_event.tick % 2 == 0 else 2.2, Color("ffc45e"))
+			else:
 				var diamond := PackedVector2Array([
 					symbol_position + Vector2(0, -4), symbol_position + Vector2(4, 0),
 					symbol_position + Vector2(0, 4), symbol_position + Vector2(-4, 0),
 				])
 				draw_colored_polygon(diamond, Color("45e6ff"))
-			else:
-				draw_circle(symbol_position, 1.0, Color("514a72"))
-		draw_string(font, card_rect.position + Vector2(7, 25), "D/F", HORIZONTAL_ALIGNMENT_LEFT, 25, 5, Color("ffc45e"))
-		draw_string(font, card_rect.position + Vector2(32, 25), "J/K", HORIZONTAL_ALIGNMENT_LEFT, 25, 5, Color("45e6ff"))
+		draw_string(font, card_rect.position + Vector2(7, 25), "D/F  STEP", HORIZONTAL_ALIGNMENT_LEFT, 57, 5, Color("ffc45e"))
+		draw_string(font, card_rect.position + Vector2(74, 25), "J/K  FINISH", HORIZONTAL_ALIGNMENT_LEFT, 65, 5, Color("45e6ff"))
 	var tutorial_skill: String = _director.tutorial_skill(_bar_index)
 	if not tutorial_skill.is_empty() and not _finished:
 		draw_string(font, Vector2(111, 119), "PRACTICE · %s" % SKILL_NAMES[tutorial_skill], HORIZONTAL_ALIGNMENT_CENTER, 98, 6, SKILL_COLORS[tutorial_skill])
@@ -605,7 +615,7 @@ func _draw_feedback() -> void:
 func _draw_footer() -> void:
 	var font := ThemeDB.fallback_font
 	draw_rect(Rect2(0, 166, 320, 14), Color(0.02, 0.015, 0.055, 0.96))
-	draw_string(font, Vector2(8, 176), "D/F CHARGE   J/K CAST", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
+	draw_string(font, Vector2(8, 176), "D/F STEP   J/K FINISH", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 	draw_string(font, Vector2(203, 176), "P PAUSE  R RETRY  C CAL", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("777394"))
 
 

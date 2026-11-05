@@ -1,5 +1,7 @@
 # Rolling Spell Window Implementation Plan
 
+> Superseded by `2026-11-05-finish-key-spells.md`. The production scene no longer waits for a four-beat rolling window.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Let the player begin a four-beat spell on any musical beat instead of waiting for the global bar downbeat.

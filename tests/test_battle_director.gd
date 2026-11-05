@@ -6,10 +6,10 @@ const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd
 func run() -> Array:
 	var failures: Array = []
 	var director = BattleDirectorScript.new()
-	_expect_equal(failures, director.tutorial_skill(0), "fireball", "bars 0-1 teach FLARE")
-	_expect_equal(failures, director.tutorial_skill(1), "fireball", "bar 1 still teaches FLARE")
-	_expect_equal(failures, director.tutorial_skill(2), "shield", "bars 2-3 teach AEGIS")
-	_expect_equal(failures, director.tutorial_skill(4), "heal", "bars 4-5 teach MEND")
+	_expect_equal(failures, director.tutorial_skill(0), "fireball", "opening bars teach FLARE")
+	_expect_equal(failures, director.tutorial_skill(2), "fireball", "bar 2 still teaches FLARE")
+	_expect_equal(failures, director.tutorial_skill(3), "heal", "later practice bars teach MEND")
+	_expect_equal(failures, director.tutorial_skill(5), "heal", "bar 5 still teaches MEND")
 	_expect_equal(failures, director.tutorial_skill(6), "", "tutorial ends after bar 5")
 
 	_expect_equal(failures, director.phase_for_health(36, 36), 1, "high health is phase one")

@@ -12,13 +12,16 @@ func _capture() -> void:
 	await create_timer(2.4).timeout
 	stage.set_process(false)
 	stage.set("_song_time_ms", 1050)
-	stage.set("_bar_index", 0)
-	stage.set("_last_skill", "fireball")
+	stage.set("_bar_index", 3)
+	stage.set("_last_skill", "heal")
 	stage.set("_skill_flash_until", Time.get_ticks_msec() + 420)
-	var phrase = stage.get("_phrase")
-	phrase.reset()
-	phrase.register_input(510, "charge", 500.0)
-	phrase.register_input(990, "cast", 500.0)
+	var command = stage.get("_command")
+	command.reset()
+	command.register_step(500, 500.0)
+	command.register_step(750, 500.0)
+	var mend: Dictionary = command.finish(1000, 500.0)
+	stage.set("_recent_command", mend.events)
+	stage.set("_recent_command_until", Time.get_ticks_msec() + 900)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame
@@ -32,9 +35,11 @@ func _capture() -> void:
 	stage.get("_battle").boss_hp = 20
 	stage.set("_last_skill", "")
 	stage.set("_skill_flash_until", 0)
-	phrase.reset()
-	phrase.register_input(16_000, "charge", 500.0)
-	phrase.register_input(16_500, "charge", 500.0)
+	command.reset()
+	command.register_step(16_000, 500.0)
+	var flare: Dictionary = command.finish(16_500, 500.0)
+	stage.set("_recent_command", flare.events)
+	stage.set("_recent_command_until", Time.get_ticks_msec() + 900)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

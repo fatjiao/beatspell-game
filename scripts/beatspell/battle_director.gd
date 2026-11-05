@@ -4,7 +4,7 @@ extends RefCounted
 func tutorial_skill(bar_index: int) -> String:
 	if bar_index < 0 or bar_index >= 6:
 		return ""
-	return ["fireball", "shield", "heal"][bar_index / 2]
+	return "fireball" if bar_index < 3 else "heal"
 
 
 func phase_for_health(boss_hp: int, max_boss_hp: int) -> int:
