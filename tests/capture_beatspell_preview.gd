@@ -25,11 +25,17 @@ func _capture() -> void:
 	preview_events.append(missed_step.event)
 	command.reset()
 	stage.set("_recent_command", preview_events)
-	stage.set("_recent_command_until", Time.get_ticks_msec() + 900)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame
 	if not _save_view("res://build/beatspell-battle-preview.png"):
+		quit(1)
+		return
+	stage.set("_song_time_ms", 2575)
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-trace-fade-preview.png"):
 		quit(1)
 		return
 
@@ -43,7 +49,6 @@ func _capture() -> void:
 	command.register_step(16_090, 500.0)
 	var flare: Dictionary = command.finish(16_410, 500.0)
 	stage.set("_recent_command", flare.events)
-	stage.set("_recent_command_until", Time.get_ticks_msec() + 900)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

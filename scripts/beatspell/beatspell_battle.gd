@@ -3,6 +3,7 @@ extends Control
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
 const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
+const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
 const BPM := 120.0
@@ -44,7 +45,6 @@ var _music_started := false
 var _bar_index := -1
 var _active_phase := 1
 var _recent_command: Array = []
-var _recent_command_until := 0
 var _feedback := "LISTEN TO THE PULSE"
 var _feedback_color := Color("dad7ff")
 var _feedback_until := 0
@@ -189,20 +189,10 @@ func _register_action(action: String) -> void:
 	_action_flash_until = Time.get_ticks_msec() + 150
 	_play_sfx(action)
 	if action == "charge":
-		var registration: Dictionary = _command.register_step(adjusted_time, BEAT_MS)
-		match registration.status:
-			"accepted":
-				_show_feedback("STEP", Color("ffc45e"), 240)
-			"duplicate":
-				_show_feedback("ONE MOVE PER TICK", Color("ff668e"), 520)
-				_play_sfx("error")
-			_:
-				_show_feedback("OFF PULSE", Color("ff668e"), 420)
-				_play_sfx("error")
+		_command.register_step(adjusted_time, BEAT_MS)
 		return
 	var result: Dictionary = _command.finish(adjusted_time, BEAT_MS)
 	_recent_command = result.events.duplicate(true)
-	_recent_command_until = Time.get_ticks_msec() + 520
 	if result.skill.is_empty():
 		_battle.cast_spell("")
 		_show_feedback("RHYTHM BROKE", Color("ff668e"), 620)
@@ -548,8 +538,10 @@ func _draw_beat_ring() -> void:
 		var marker_radius := 2.0 if marker_index == current_ring_tick else 1.5
 		draw_circle(marker_position, marker_radius, marker_color)
 	var displayed_events: Array = _command.display_events
-	if displayed_events.is_empty() and Time.get_ticks_msec() < _recent_command_until:
+	var active_trace := not displayed_events.is_empty() and _command.is_active()
+	if displayed_events.is_empty():
 		displayed_events = _recent_command
+	var trace_alpha := InputTraceFade.alpha_for(displayed_events, adjusted_time, active_trace)
 	for entry in displayed_events:
 		var angle := -PI / 2.0 + float(entry.ring_phase) * TAU
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
@@ -557,18 +549,24 @@ func _draw_beat_ring() -> void:
 		var target_position := center + Vector2(cos(target_angle), sin(target_angle)) * 10.0
 		var missed: bool = entry.grade == "miss"
 		var trace_color := Color("ff668e") if missed else Color("ffc45e") if entry.action == "step" else Color("45e6ff")
-		trace_color.a = 0.32
+		trace_color.a = 0.32 * trace_alpha
 		draw_line(target_position, input_position, trace_color, 1.0)
 		if entry.action == "step":
-			draw_circle(input_position, 3.0, Color("ff668e") if missed else Color("ffc45e"))
+			var step_color := Color("ff668e") if missed else Color("ffc45e")
+			step_color.a = trace_alpha
+			draw_circle(input_position, 3.0, step_color)
 			if missed:
-				draw_arc(input_position, 4.5, 0, TAU, 12, Color("ffb0c1"), 1.0)
+				var miss_outline := Color("ffb0c1")
+				miss_outline.a = trace_alpha
+				draw_arc(input_position, 4.5, 0, TAU, 12, miss_outline, 1.0)
 		else:
 			var diamond := PackedVector2Array([
 				input_position + Vector2(0, -4), input_position + Vector2(4, 0),
 				input_position + Vector2(0, 4), input_position + Vector2(-4, 0),
 			])
-			draw_colored_polygon(diamond, Color("ff668e") if missed else Color("45e6ff"))
+			var finish_color := Color("ff668e") if missed else Color("45e6ff")
+			finish_color.a = trace_alpha
+			draw_colored_polygon(diamond, finish_color)
 	if _command.broken:
 		draw_line(center + Vector2(-7, -7), center + Vector2(7, 7), Color("ff668e"), 2.0)
 		draw_line(center + Vector2(-7, 7), center + Vector2(7, -7), Color("ff668e"), 2.0)

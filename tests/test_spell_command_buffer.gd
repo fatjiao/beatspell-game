@@ -11,6 +11,7 @@ func run() -> Array[String]:
 	_expect(failures, start.status == "accepted", "FLARE can begin on an arbitrary whole beat")
 	_expect(failures, command.events[0].ring_tick == 1, "step preserves its absolute four-position ring phase")
 	_expect(failures, command.events[0].has("ring_phase"), "step stores its unquantized live ring phase")
+	_expect(failures, command.events[0].input_time_ms == 2510, "step stores its adjusted input time for trail fading")
 	if command.events[0].has("ring_phase"):
 		_expect(failures, command.events[0].ring_phase > 0.25, "late step is drawn after its target corner")
 	var flare: Dictionary = command.finish(2990, 500.0)

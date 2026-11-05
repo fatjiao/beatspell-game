@@ -90,6 +90,7 @@ func _make_event(action: String, quantized: Dictionary, song_time_ms: int, beat_
 		"tick": quantized.tick,
 		"ring_tick": posmod(int(quantized.tick), RING_TICKS),
 		"ring_phase": fposmod(float(song_time_ms), cycle_ms) / cycle_ms,
+		"input_time_ms": song_time_ms,
 		"offset_ms": quantized.offset_ms,
 		"grade": quantized.grade,
 	}
