@@ -2,6 +2,7 @@ extends Control
 
 const ChartLoaderScript = preload("res://scripts/rhythm/chart_loader.gd")
 const RhythmJudgeScript = preload("res://scripts/rhythm/rhythm_judge.gd")
+const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
 const CHART_PATH := "res://data/charts/prototype.json"
 const INSTRUMENTS := ["drums", "bass", "synth", "lead"]
@@ -40,9 +41,11 @@ var _pad_flash_until := {}
 var _tone_players := {}
 var _metronome_player: AudioStreamPlayer
 var _finished := false
+var _audio_offset_ms := 0
 
 
 func _ready() -> void:
+	_audio_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_setup_tones()
 	_start_run()
 	queue_redraw()
@@ -64,6 +67,10 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_C:
+			get_tree().change_scene_to_file("res://scenes/settings/calibration.tscn")
+			return
 	if _finished:
 		return
 	for action in ACTIONS:
@@ -97,7 +104,7 @@ func _start_run() -> void:
 func _play_instrument(instrument: String) -> void:
 	_pad_flash_until[instrument] = Time.get_ticks_msec() + 120
 	_tone_players[instrument].play()
-	var result: Dictionary = _judge.judge(_song_time_ms, instrument)
+	var result: Dictionary = _judge.judge(_song_time_ms, instrument, _audio_offset_ms)
 	_apply_judgement(result.grade, result.offset_ms)
 
 
@@ -222,4 +229,4 @@ func _draw() -> void:
 
 	draw_string(font, Vector2(8, 143), _status, HORIZONTAL_ALIGNMENT_LEFT, 170, 9, _status_color)
 	draw_string(font, Vector2(205, 143), "COMBO %02d  HEAT %03d" % [_combo, _heat], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("d8d5ff"))
-
+	draw_string(font, Vector2(248, 176), "C CAL %+dms" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("7d789f"))
