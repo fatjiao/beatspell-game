@@ -10,7 +10,21 @@ func _capture() -> void:
 	var stage = load("res://scenes/prototype/prototype_stage.tscn").instantiate()
 	root.add_child(stage)
 	await create_timer(3.1).timeout
-	if not _save_view("res://build/gameplay-feedback-preview.png"):
+	if not _save_view("res://build/single-focus-preview.png"):
+		quit(1)
+		return
+
+	stage.set_process(false)
+	stage.set("_song_time_ms", 12050)
+	stage.set("_current_section_id", "ensemble")
+	stage.set("_section_transition_until", 0)
+	for chart_event in stage.get("_events"):
+		if chart_event.time_ms < 12000:
+			chart_event.consumed = true
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/ensemble-focus-preview.png"):
 		quit(1)
 		return
 

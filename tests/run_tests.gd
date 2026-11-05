@@ -9,6 +9,7 @@ func _init() -> void:
 		{"name": "calibration", "script": preload("res://tests/test_calibration.gd")},
 		{"name": "audio_assets", "script": preload("res://tests/test_audio_assets.gd")},
 		{"name": "result_scoring", "script": preload("res://tests/test_result_scoring.gd")},
+		{"name": "stage_director", "script": preload("res://tests/test_stage_director.gd")},
 	]
 	var failure_count := 0
 	for suite in suites:

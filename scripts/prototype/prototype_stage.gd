@@ -3,6 +3,7 @@ extends Control
 const ChartLoaderScript = preload("res://scripts/rhythm/chart_loader.gd")
 const RhythmJudgeScript = preload("res://scripts/rhythm/rhythm_judge.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
+const StageDirectorScript = preload("res://scripts/presentation/stage_director.gd")
 const SUBWAY_BACKGROUND: Texture2D = preload("res://assets/art/subway/subway_background.png")
 const LOOP_IDLE: Texture2D = preload("res://assets/art/loop/loop_idle.png")
 
@@ -59,6 +60,11 @@ var _perfect_count := 0
 var _good_count := 0
 var _miss_count := 0
 var _bad_tap_count := 0
+var _director = StageDirectorScript.new()
+var _current_section_id := ""
+var _section_transition_until := 0
+var _glitch_until := 0
+var _hit_burst_until := 0
 
 
 func _ready() -> void:
@@ -87,6 +93,7 @@ func _process(_delta: float) -> void:
 			- AudioServer.get_output_latency()
 		) * 1000.0))
 		_update_music_layers()
+	_update_stage_direction()
 	if not _finished:
 		_update_metronome()
 		_consume_expired_events()
@@ -148,6 +155,10 @@ func _start_run() -> void:
 	_good_count = 0
 	_miss_count = 0
 	_bad_tap_count = 0
+	_current_section_id = ""
+	_section_transition_until = 0
+	_glitch_until = 0
+	_hit_burst_until = 0
 	for player in _music_players.values():
 		player.stop()
 		player.stream_paused = false
@@ -209,6 +220,22 @@ func _show_feedback(text: String, color: Color, duration_ms: int = 420) -> void:
 	_feedback_text = text
 	_feedback_color = color
 	_feedback_until = Time.get_ticks_msec() + duration_ms
+	if text in ["MISS", "OFF BEAT"]:
+		_glitch_until = Time.get_ticks_msec() + 180
+	else:
+		_hit_burst_until = Time.get_ticks_msec() + 260
+
+
+func _update_stage_direction() -> void:
+	if _song_time_ms < 0:
+		return
+	var section: Dictionary = _director.section_at(_song_time_ms)
+	if section.id == _current_section_id:
+		return
+	_current_section_id = section.id
+	_section_transition_until = Time.get_ticks_msec() + (1050 if section.id == "drums" else 760)
+	if section.instrument != "ensemble":
+		_active_instrument = section.instrument
 
 
 func _toggle_pause() -> void:
@@ -341,34 +368,46 @@ func _make_tone(frequency: float, duration_seconds: float) -> AudioStreamWAV:
 
 
 func _draw() -> void:
-	draw_texture_rect(SUBWAY_BACKGROUND, Rect2(Vector2.ZERO, size), false)
+	var background_rect := Rect2(Vector2.ZERO, size)
+	if Time.get_ticks_msec() < _glitch_until:
+		draw_texture_rect(SUBWAY_BACKGROUND, Rect2(-2, 0, size.x, size.y), false, Color(1.0, 0.15, 0.35, 0.45))
+		draw_texture_rect(SUBWAY_BACKGROUND, Rect2(2, 0, size.x, size.y), false, Color(0.10, 0.90, 1.0, 0.45))
+	draw_texture_rect(SUBWAY_BACKGROUND, background_rect, false)
 	_draw_environment_reactions()
 	_draw_loop_character()
+	if _finished:
+		_draw_result_overlay()
+		return
 	if _debug_tracks:
 		_draw_debug_tracks()
 	else:
-		_draw_stage_hud()
+		_draw_cinematic_stage()
 	_draw_feedback()
+	_draw_section_transition()
 	if _song_time_ms < 0 and not _paused:
 		_draw_count_in()
 	if _paused:
 		_draw_pause_overlay()
-	if _finished:
-		_draw_result_overlay()
 
 
 func _draw_environment_reactions() -> void:
 	var layer_count := _active_layer_count()
+	var section: Dictionary = _director.section_at(_song_time_ms)
 	if layer_count <= 1:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.10, 0.32))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.10, 0.24))
 	elif layer_count == 2:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.00, 0.10, 0.14, 0.10))
+		draw_circle(Vector2(50, 93), 52.0, Color(0.30, 1.00, 0.55, 0.06))
 	elif layer_count == 3:
-		draw_circle(Vector2(160, 55), 68.0, Color(0.18, 0.70, 0.90, 0.07))
+		for beam_x in [84.0, 160.0, 236.0]:
+			var beam := PackedVector2Array([Vector2(beam_x - 15, 24), Vector2(beam_x + 15, 24), Vector2(beam_x + 34, 145), Vector2(beam_x - 34, 145)])
+			draw_colored_polygon(beam, Color(0.95, 0.95, 0.45, 0.035))
 	else:
-		draw_circle(Vector2(160, 68), 90.0, Color(1.00, 0.16, 0.62, 0.07))
-		draw_circle(Vector2(160, 68), 64.0, Color(0.18, 0.90, 0.95, 0.08))
+		draw_circle(Vector2(178, 72), 110.0, Color(1.00, 0.16, 0.62, 0.06))
+		draw_circle(Vector2(178, 72), 76.0, Color(0.18, 0.90, 0.95, 0.07))
 		_draw_passersby()
+	if section.id == "drums" and _song_time_ms >= 0:
+		var ripple := fmod(float(_song_time_ms), 500.0) / 500.0
+		draw_arc(Vector2(94, 141), 10.0 + ripple * 38.0, PI, TAU, 36, Color(0.18, 0.89, 0.90, (1.0 - ripple) * 0.24), 1.0)
 	if layer_count >= 3 and _song_time_ms >= 0:
 		for particle_index in 8:
 			var particle_x := fmod(float(particle_index * 47 + int(_song_time_ms / 28)), 336.0) - 8.0
@@ -402,11 +441,14 @@ func _draw_loop_character() -> void:
 		tilt = -0.035 if _active_instrument in ["drums", "synth"] else 0.035
 	var glow: Color = COLORS[_active_instrument]
 	glow.a = 0.10 + float(_heat) / 1000.0
-	draw_ellipse_shadow(Vector2(160, 127), 27.0, 6.0, glow)
-	draw_set_transform(Vector2(160, 87 + bounce), tilt, Vector2.ONE)
+	var character_center := Vector2(94, 99 + bounce)
+	if Time.get_ticks_msec() < _glitch_until:
+		character_center.x += -2.0 if Time.get_ticks_msec() % 2 == 0 else 2.0
+	draw_ellipse_shadow(Vector2(94, 141), 27.0, 6.0, glow)
+	draw_set_transform(character_center, tilt, Vector2.ONE)
 	draw_texture_rect(LOOP_IDLE, Rect2(-28, -42, 56, 84), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_draw_active_instrument(reacting, bounce)
+	_draw_active_instrument(reacting, character_center)
 
 
 func draw_ellipse_shadow(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
@@ -417,85 +459,109 @@ func draw_ellipse_shadow(center: Vector2, radius_x: float, radius_y: float, colo
 	draw_colored_polygon(points, color)
 
 
-func _draw_active_instrument(reacting: bool, bounce: float) -> void:
+func _draw_active_instrument(reacting: bool, center: Vector2) -> void:
 	var color: Color = COLORS[_active_instrument]
-	var y := 98.0 + bounce
 	match _active_instrument:
 		"drums":
-			draw_circle(Vector2(151, y + 6), 6.0, Color(0.05, 0.06, 0.13, 0.92))
-			draw_circle(Vector2(169, y + 6), 6.0, Color(0.05, 0.06, 0.13, 0.92))
-			draw_arc(Vector2(151, y + 6), 6.0, 0, TAU, 20, color, 1.0)
-			draw_arc(Vector2(169, y + 6), 6.0, 0, TAU, 20, color, 1.0)
+			draw_circle(center + Vector2(-9, 17), 6.0, Color(0.05, 0.06, 0.13, 0.92))
+			draw_circle(center + Vector2(9, 17), 6.0, Color(0.05, 0.06, 0.13, 0.92))
+			draw_arc(center + Vector2(-9, 17), 6.0, 0, TAU, 20, color, 1.0)
+			draw_arc(center + Vector2(9, 17), 6.0, 0, TAU, 20, color, 1.0)
 			if reacting:
-				draw_line(Vector2(150, y - 3), Vector2(146, y - 12), color, 1.0)
-				draw_line(Vector2(170, y - 3), Vector2(174, y - 12), color, 1.0)
+				draw_line(center + Vector2(-10, 8), center + Vector2(-14, -1), color, 1.0)
+				draw_line(center + Vector2(10, 8), center + Vector2(14, -1), color, 1.0)
 		"bass":
-			draw_line(Vector2(151, y + 14), Vector2(174, y - 12), color, 3.0)
-			draw_circle(Vector2(151, y + 13), 7.0, Color(0.05, 0.06, 0.13, 0.94))
-			draw_arc(Vector2(151, y + 13), 7.0, 0, TAU, 20, color, 1.0)
+			draw_line(center + Vector2(-9, 25), center + Vector2(14, -1), color, 3.0)
+			draw_circle(center + Vector2(-9, 24), 7.0, Color(0.05, 0.06, 0.13, 0.94))
+			draw_arc(center + Vector2(-9, 24), 7.0, 0, TAU, 20, color, 1.0)
 		"synth":
-			draw_rect(Rect2(143, y + 4, 34, 10), Color(0.05, 0.06, 0.13, 0.94))
-			draw_rect(Rect2(143, y + 4, 34, 10), color, false, 1.0)
-			for key_x in range(147, 176, 5):
-				draw_line(Vector2(key_x, y + 8), Vector2(key_x, y + 13), Color("d8d5ff"), 1.0)
+			var keyboard_rect := Rect2(center + Vector2(-17, 15), Vector2(34, 10))
+			draw_rect(keyboard_rect, Color(0.05, 0.06, 0.13, 0.94))
+			draw_rect(keyboard_rect, color, false, 1.0)
+			for key_x in range(-13, 16, 5):
+				draw_line(center + Vector2(key_x, 19), center + Vector2(key_x, 24), Color("d8d5ff"), 1.0)
 		"lead":
-			draw_line(Vector2(168, y - 7), Vector2(168, 124), color, 1.0)
-			draw_circle(Vector2(168, y - 9), 3.0, color)
-			draw_line(Vector2(162, 124), Vector2(174, 124), color, 1.0)
+			draw_line(center + Vector2(8, 2), center + Vector2(8, 36), color, 1.0)
+			draw_circle(center + Vector2(8, 0), 3.0, color)
+			draw_line(center + Vector2(2, 36), center + Vector2(14, 36), color, 1.0)
 
 
-func _draw_stage_hud() -> void:
+func _draw_cinematic_stage() -> void:
 	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(0, 0, size.x, 25), Color(0.04, 0.04, 0.12, 0.88))
-	draw_string(font, Vector2(8, 11), "ONE PERSON BAND", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("d8d5ff"))
-	draw_string(font, Vector2(8, 21), "01  UNDERPASS", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("7dcae8"))
-	draw_string(font, Vector2(130, 12), _status, HORIZONTAL_ALIGNMENT_CENTER, 112, 8, _status_color)
-	draw_string(font, Vector2(260, 11), "%06d" % _score, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color.WHITE)
-	draw_string(font, Vector2(260, 21), "x%02d" % _combo, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("f9f871"))
-	for layer_index in INSTRUMENTS.size():
-		var layer_instrument: String = INSTRUMENTS[layer_index]
-		var layer_color: Color = COLORS[layer_instrument]
-		layer_color.a = 0.92 if layer_index < _active_layer_count() else 0.18
-		draw_rect(Rect2(228 + layer_index * 7, 16, 5, 5), layer_color)
+	var section: Dictionary = _director.section_at(_song_time_ms)
+	var focus_instrument := _focus_instrument(section)
+	var focus_color: Color = COLORS[focus_instrument]
+	var focus_key: String = KEY_LABELS[focus_instrument]
 
-	_draw_compact_note_ribbon(font)
-	draw_rect(Rect2(0, 149, 320, 31), Color(0.04, 0.04, 0.12, 0.88))
-	var now := Time.get_ticks_msec()
+	draw_rect(Rect2(0, 0, 320, 27), Color(0.03, 0.03, 0.10, 0.72))
+	draw_string(font, Vector2(8, 12), "01 / UNDERPASS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("d8d5ff"))
+	draw_string(font, Vector2(148, 12), section.title, HORIZONTAL_ALIGNMENT_RIGHT, 164, 8, focus_color)
+	var progress := clampf(float(maxi(0, _song_time_ms)) / float(maxi(1, int(_chart.get("duration_ms", 1)))), 0.0, 1.0)
+	draw_rect(Rect2(8, 20, 304, 2), Color(1, 1, 1, 0.10))
+	draw_rect(Rect2(8, 20, 304.0 * progress, 2), focus_color)
+
+	_draw_pulse_rail(font, focus_instrument, focus_key, focus_color)
+	draw_rect(Rect2(0, 168, 320, 12), Color(0.03, 0.03, 0.10, 0.68))
+	draw_string(font, Vector2(8, 177), "P PAUSE   R RETRY   TAB ANALYSIS", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
+	draw_string(font, Vector2(268, 177), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
+
+
+func _draw_pulse_rail(font: Font, instrument: String, key: String, color: Color) -> void:
+	var rail_start := Vector2(132, 108)
+	var rail_end := Vector2(270, 108)
+	draw_line(rail_start, rail_end, Color(0.02, 0.02, 0.08, 0.90), 5.0)
+	draw_line(rail_start, rail_end, Color(color, 0.62), 1.0)
+
+	var beat_length_ms := 500.0
+	if not _chart.is_empty():
+		beat_length_ms = 60000.0 / float(_chart.bpm)
+	var beat_index := 0
+	if _song_time_ms >= 0:
+		beat_index = int(floor(float(_song_time_ms) / beat_length_ms)) % 4
+	for index in 4:
+		var marker_x := 146.0 + float(index) * 29.0
+		var marker_color := color if index == beat_index else Color(1, 1, 1, 0.28)
+		draw_circle(Vector2(marker_x, 108), 3.0 if index == beat_index else 2.0, marker_color)
+		draw_string(font, Vector2(marker_x - 3, 97), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, marker_color)
+
 	var next_event = _next_pending_event()
-	for pad_index in INSTRUMENTS.size():
-		var instrument: String = INSTRUMENTS[pad_index]
-		var pad_rect := Rect2(7 + pad_index * 78, 153, 72, 22)
-		var active := int(_pad_flash_until.get(instrument, 0)) > now
-		var upcoming := false
-		if next_event != null:
-			upcoming = next_event.instrument == instrument and next_event.time_ms - _song_time_ms <= 1400
-		var pad_color: Color = COLORS[instrument]
-		pad_color.a = 0.78 if active else (0.34 if upcoming else 0.18)
-		draw_rect(pad_rect, pad_color)
-		draw_rect(pad_rect, COLORS[instrument], false, 2.0 if upcoming else 1.0)
-		draw_string(font, Vector2(pad_rect.position.x + 6, 167), "%s  %s" % [KEY_LABELS[instrument], DISPLAY_NAMES[instrument]], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color.WHITE)
-	draw_string(font, Vector2(7, 178), "TAB TRACKS  P PAUSE  R RETRY", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
-	draw_string(font, Vector2(268, 178), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
+	if next_event != null:
+		var delta_ms: int = next_event.time_ms - _song_time_ms
+		if delta_ms <= 2100:
+			var travel := clampf(1.0 - float(delta_ms) / 2000.0, 0.0, 1.0)
+			var pulse_x := lerpf(rail_start.x, rail_end.x - 24.0, travel)
+			var pulse_color: Color = COLORS[next_event.instrument]
+			draw_circle(Vector2(pulse_x, rail_start.y), 6.0, Color(0.02, 0.02, 0.08, 0.95))
+			draw_arc(Vector2(pulse_x, rail_start.y), 6.0, 0, TAU, 20, pulse_color, 2.0)
+			draw_line(Vector2(pulse_x - 4, rail_start.y), Vector2(pulse_x + 4, rail_start.y), pulse_color, 1.0)
+
+	var target_center := Vector2(278, 108)
+	var target_pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 100.0)
+	draw_circle(target_center, 24.0 + target_pulse * 2.0, Color(0.02, 0.02, 0.08, 0.86))
+	draw_arc(target_center, 23.0, 0, TAU, 32, color, 2.0)
+	draw_string(font, Vector2(263, 116), key, HORIZONTAL_ALIGNMENT_CENTER, 30, 21, Color.WHITE)
+	draw_string(font, Vector2(246, 143), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_CENTER, 64, 8, color)
+	draw_string(font, Vector2(231, 154), "HIT ON THE PULSE", HORIZONTAL_ALIGNMENT_CENTER, 94, 6, Color("d8d5ff"))
+
+	if Time.get_ticks_msec() < _hit_burst_until:
+		var life := clampf(float(_hit_burst_until - Time.get_ticks_msec()) / 260.0, 0.0, 1.0)
+		var burst_color := color
+		burst_color.a = life * 0.70
+		draw_arc(target_center, 25.0 + (1.0 - life) * 24.0, 0, TAU, 40, burst_color, 2.0)
+		for ray_index in 8:
+			var ray_angle := TAU * float(ray_index) / 8.0
+			var ray_from := target_center + Vector2.from_angle(ray_angle) * 28.0
+			var ray_to := target_center + Vector2.from_angle(ray_angle) * (32.0 + (1.0 - life) * 12.0)
+			draw_line(ray_from, ray_to, burst_color, 1.0)
 
 
-func _draw_compact_note_ribbon(font: Font) -> void:
-	draw_rect(Rect2(0, 123, 320, 26), Color(0.03, 0.03, 0.10, 0.72))
-	var hit_x := 70.0
-	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 90.0)
-	draw_circle(Vector2(hit_x, 136), 10.0 + pulse * 2.0, Color(1, 1, 1, 0.04 + pulse * 0.04))
-	draw_line(Vector2(hit_x, 126), Vector2(hit_x, 146), Color.WHITE, 1.0)
-	draw_string(font, Vector2(7, 139), "PLAY", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("d8d5ff"))
-	for chart_event in _events:
-		if chart_event.consumed:
-			continue
-		var delta_ms: int = chart_event.time_ms - _song_time_ms
-		if delta_ms < -200 or delta_ms > 5600:
-			continue
-		var event_x := hit_x + (float(delta_ms) / 1000.0) * 42.0
-		var event_color: Color = COLORS[chart_event.instrument]
-		draw_circle(Vector2(event_x, 136), 7.0, Color(0.03, 0.03, 0.10, 0.94))
-		draw_arc(Vector2(event_x, 136), 7.0, 0, TAU, 20, event_color, 1.0)
-		draw_string(font, Vector2(event_x - 3, 139), KEY_LABELS[chart_event.instrument], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, event_color)
+func _focus_instrument(section: Dictionary) -> String:
+	var next_event = _next_pending_event()
+	if next_event != null:
+		return next_event.instrument
+	if section.instrument != "ensemble":
+		return section.instrument
+	return _active_instrument
 
 
 func _next_pending_event():
@@ -510,21 +576,40 @@ func _draw_feedback() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var remaining := float(_feedback_until - Time.get_ticks_msec()) / 420.0
-	var pop_y := 52.0 - minf(1.0, remaining) * 3.0
+	var pop_y := 59.0 - minf(1.0, remaining) * 4.0
 	var shadow := Color(0.02, 0.02, 0.08, 0.85)
-	draw_string(font, Vector2(190, pop_y + 1), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 11, shadow)
-	draw_string(font, Vector2(189, pop_y), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 11, _feedback_color)
+	draw_string(font, Vector2(205, pop_y + 1), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 104, 12, shadow)
+	draw_string(font, Vector2(204, pop_y), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 104, 12, _feedback_color)
 	var border_color := _feedback_color
 	border_color.a = clampf(remaining * 0.25, 0.0, 0.25)
-	draw_rect(Rect2(2, 27, 316, 120), border_color, false, 2.0)
+	draw_rect(Rect2(2, 27, 316, 138), border_color, false, 2.0)
+
+
+func _draw_section_transition() -> void:
+	if _debug_tracks or _finished or _current_section_id.is_empty():
+		return
+	var now := Time.get_ticks_msec()
+	if now >= _section_transition_until:
+		return
+	var section: Dictionary = _director.section_at(_song_time_ms)
+	var instrument: String = _focus_instrument(section)
+	var color: Color = COLORS[instrument]
+	var remaining := clampf(float(_section_transition_until - now) / 760.0, 0.0, 1.0)
+	var panel_alpha := minf(0.88, remaining * 1.6)
+	draw_rect(Rect2(126, 35, 186, 42), Color(0.02, 0.02, 0.08, panel_alpha))
+	draw_rect(Rect2(126, 35, 3, 42), color)
+	var font := ThemeDB.fallback_font
+	draw_string(font, Vector2(139, 53), section.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+	draw_string(font, Vector2(139, 68), section.instruction, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, color)
 
 
 func _draw_count_in() -> void:
 	var font := ThemeDB.fallback_font
 	var count := clampi(int(ceil(float(-_song_time_ms) / 500.0)), 1, 4)
-	draw_circle(Vector2(160, 78), 21.0, Color(0.03, 0.03, 0.10, 0.82))
-	draw_arc(Vector2(160, 78), 21.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - fmod(float(-_song_time_ms), 500.0) / 500.0), 28, Color("2de2e6"), 2.0)
-	draw_string(font, Vector2(146, 86), str(count), HORIZONTAL_ALIGNMENT_CENTER, 28, 22, Color.WHITE)
+	var center := Vector2(278, 108)
+	draw_circle(center, 28.0, Color(0.03, 0.03, 0.10, 0.94))
+	draw_arc(center, 28.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - fmod(float(-_song_time_ms), 500.0) / 500.0), 32, Color("2de2e6"), 3.0)
+	draw_string(font, Vector2(259, 118), str(count), HORIZONTAL_ALIGNMENT_CENTER, 38, 28, Color.WHITE)
 
 
 func _draw_pause_overlay() -> void:
