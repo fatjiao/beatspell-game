@@ -5,6 +5,7 @@ const GOOD_WINDOW_MS := 135
 const RING_TICKS := 4
 
 var events: Array = []
+var display_events: Array = []
 var broken := false
 
 
@@ -14,23 +15,28 @@ func is_active() -> bool:
 
 func register_step(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
 	var quantized := _quantize(song_time_ms, beat_ms)
+	var event := _make_event("step", quantized, song_time_ms, beat_ms)
+	if not is_active() and not display_events.is_empty():
+		display_events.clear()
 	if not quantized.valid:
 		if is_active():
 			broken = true
-		return {"status": "off_pulse"}
+		display_events.append(event)
+		return {"status": "off_pulse", "event": event}
 	if is_active() and int(quantized.tick) <= int(events[-1].tick):
 		broken = true
-		return {"status": "duplicate"}
-	var event := _make_event("step", quantized, song_time_ms, beat_ms)
+		event.grade = "miss"
+		display_events.append(event)
+		return {"status": "duplicate", "event": event}
 	events.append(event)
+	display_events.append(event)
 	return {"status": "accepted", "event": event}
 
 
 func finish(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
 	var quantized := _quantize(song_time_ms, beat_ms)
-	var completed_events := events.duplicate(true)
-	if quantized.valid:
-		completed_events.append(_make_event("finish", quantized, song_time_ms, beat_ms))
+	var completed_events := display_events.duplicate(true)
+	completed_events.append(_make_event("finish", quantized, song_time_ms, beat_ms))
 	var result := {"skill": "", "grade": "miss", "events": completed_events}
 	if not quantized.valid or broken:
 		reset()
@@ -60,6 +66,7 @@ func expire_if_needed(song_time_ms: int, beat_ms: float = 500.0) -> bool:
 
 func reset() -> void:
 	events.clear()
+	display_events.clear()
 	broken = false
 
 

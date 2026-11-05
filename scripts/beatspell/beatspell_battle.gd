@@ -547,7 +547,7 @@ func _draw_beat_ring() -> void:
 		var marker_color := Color("dad7ff") if marker_index == current_ring_tick else Color("514a72")
 		var marker_radius := 2.0 if marker_index == current_ring_tick else 1.5
 		draw_circle(marker_position, marker_radius, marker_color)
-	var displayed_events: Array = _command.events
+	var displayed_events: Array = _command.display_events
 	if displayed_events.is_empty() and Time.get_ticks_msec() < _recent_command_until:
 		displayed_events = _recent_command
 	for entry in displayed_events:
@@ -555,17 +555,20 @@ func _draw_beat_ring() -> void:
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
 		var target_angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 4.0
 		var target_position := center + Vector2(cos(target_angle), sin(target_angle)) * 10.0
-		var trace_color := Color("ffc45e") if entry.action == "step" else Color("45e6ff")
+		var missed: bool = entry.grade == "miss"
+		var trace_color := Color("ff668e") if missed else Color("ffc45e") if entry.action == "step" else Color("45e6ff")
 		trace_color.a = 0.32
 		draw_line(target_position, input_position, trace_color, 1.0)
 		if entry.action == "step":
-			draw_circle(input_position, 3.0, Color("ffc45e"))
+			draw_circle(input_position, 3.0, Color("ff668e") if missed else Color("ffc45e"))
+			if missed:
+				draw_arc(input_position, 4.5, 0, TAU, 12, Color("ffb0c1"), 1.0)
 		else:
 			var diamond := PackedVector2Array([
 				input_position + Vector2(0, -4), input_position + Vector2(4, 0),
 				input_position + Vector2(0, 4), input_position + Vector2(-4, 0),
 			])
-			draw_colored_polygon(diamond, Color("45e6ff"))
+			draw_colored_polygon(diamond, Color("ff668e") if missed else Color("45e6ff"))
 	if _command.broken:
 		draw_line(center + Vector2(-7, -7), center + Vector2(7, 7), Color("ff668e"), 2.0)
 		draw_line(center + Vector2(-7, 7), center + Vector2(7, -7), Color("ff668e"), 2.0)

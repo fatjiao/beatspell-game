@@ -31,8 +31,18 @@ func run() -> Array[String]:
 	_expect(failures, empty_finish.skill.is_empty(), "finish without steps misses safely")
 	var half_start: Dictionary = command.register_step(5250, 500.0)
 	_expect(failures, half_start.status == "off_pulse" and not command.is_active(), "half-beat input is no longer accepted")
+	_expect(failures, command.display_events.size() == 1, "off-pulse step is still kept for visual feedback")
+	if command.display_events.size() == 1:
+		_expect(failures, command.display_events[0].grade == "miss", "off-pulse step is marked as a miss")
+		_expect(failures, is_equal_approx(command.display_events[0].ring_phase, 0.625), "off-pulse step keeps its exact ring position")
 	var off_pulse: Dictionary = command.register_step(5200, 500.0)
 	_expect(failures, off_pulse.status == "off_pulse", "input outside the whole-beat timing window is rejected")
+	_expect(failures, command.display_events.size() == 1, "a new attempt replaces a standalone missed marker")
+
+	var missed_finish: Dictionary = command.finish(5350, 500.0)
+	_expect(failures, missed_finish.events.size() == 2, "off-pulse finish is also returned in the visual trail")
+	if missed_finish.events.size() == 2:
+		_expect(failures, missed_finish.events[1].action == "finish" and missed_finish.events[1].grade == "miss", "off-pulse finish keeps its shape and miss state")
 
 	command.register_step(6000, 500.0)
 	command.register_step(7000, 500.0)
