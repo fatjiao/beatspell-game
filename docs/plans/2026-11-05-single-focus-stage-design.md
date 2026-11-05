@@ -1,5 +1,7 @@
 # Single-Focus Stage Design
 
+> Superseded by `2026-11-05-fixed-key-stage-design.md`. A changing single target worked for one-button references but created unnecessary recognition load in this four-key game.
+
 ## Intent
 
 The previous presentation behaved like a technical note highway placed over a background. This redesign keeps the four instruments but adopts the strongest interaction principle from *Rhythm Doctor*: one immediately readable rule and one visual anchor, with the scene carrying most of the feedback.

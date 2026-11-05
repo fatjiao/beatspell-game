@@ -10,7 +10,7 @@ func _capture() -> void:
 	var stage = load("res://scenes/prototype/prototype_stage.tscn").instantiate()
 	root.add_child(stage)
 	await create_timer(3.1).timeout
-	if not _save_view("res://build/single-focus-preview.png"):
+	if not _save_view("res://build/fixed-key-preview.png"):
 		quit(1)
 		return
 
@@ -24,7 +24,7 @@ func _capture() -> void:
 	stage.queue_redraw()
 	await process_frame
 	await process_frame
-	if not _save_view("res://build/ensemble-focus-preview.png"):
+	if not _save_view("res://build/fixed-key-ensemble-preview.png"):
 		quit(1)
 		return
 

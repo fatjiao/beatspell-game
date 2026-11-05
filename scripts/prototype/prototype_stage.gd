@@ -407,7 +407,7 @@ func _draw_environment_reactions() -> void:
 		_draw_passersby()
 	if section.id == "drums" and _song_time_ms >= 0:
 		var ripple := fmod(float(_song_time_ms), 500.0) / 500.0
-		draw_arc(Vector2(94, 141), 10.0 + ripple * 38.0, PI, TAU, 36, Color(0.18, 0.89, 0.90, (1.0 - ripple) * 0.24), 1.0)
+		draw_arc(Vector2(160, 133), 10.0 + ripple * 38.0, PI, TAU, 36, Color(0.18, 0.89, 0.90, (1.0 - ripple) * 0.24), 1.0)
 	if layer_count >= 3 and _song_time_ms >= 0:
 		for particle_index in 8:
 			var particle_x := fmod(float(particle_index * 47 + int(_song_time_ms / 28)), 336.0) - 8.0
@@ -441,10 +441,10 @@ func _draw_loop_character() -> void:
 		tilt = -0.035 if _active_instrument in ["drums", "synth"] else 0.035
 	var glow: Color = COLORS[_active_instrument]
 	glow.a = 0.10 + float(_heat) / 1000.0
-	var character_center := Vector2(94, 99 + bounce)
+	var character_center := Vector2(160, 91 + bounce)
 	if Time.get_ticks_msec() < _glitch_until:
 		character_center.x += -2.0 if Time.get_ticks_msec() % 2 == 0 else 2.0
-	draw_ellipse_shadow(Vector2(94, 141), 27.0, 6.0, glow)
+	draw_ellipse_shadow(Vector2(160, 133), 27.0, 6.0, glow)
 	draw_set_transform(character_center, tilt, Vector2.ONE)
 	draw_texture_rect(LOOP_IDLE, Rect2(-28, -42, 56, 84), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -491,7 +491,6 @@ func _draw_cinematic_stage() -> void:
 	var section: Dictionary = _director.section_at(_song_time_ms)
 	var focus_instrument := _focus_instrument(section)
 	var focus_color: Color = COLORS[focus_instrument]
-	var focus_key: String = KEY_LABELS[focus_instrument]
 
 	draw_rect(Rect2(0, 0, 320, 27), Color(0.03, 0.03, 0.10, 0.72))
 	draw_string(font, Vector2(8, 12), "01 / UNDERPASS", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("d8d5ff"))
@@ -500,59 +499,70 @@ func _draw_cinematic_stage() -> void:
 	draw_rect(Rect2(8, 20, 304, 2), Color(1, 1, 1, 0.10))
 	draw_rect(Rect2(8, 20, 304.0 * progress, 2), focus_color)
 
-	_draw_pulse_rail(font, focus_instrument, focus_key, focus_color)
+	_draw_fixed_key_anchors(font, section)
 	draw_rect(Rect2(0, 168, 320, 12), Color(0.03, 0.03, 0.10, 0.68))
 	draw_string(font, Vector2(8, 177), "P PAUSE   R RETRY   TAB ANALYSIS", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 	draw_string(font, Vector2(268, 177), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 
 
-func _draw_pulse_rail(font: Font, instrument: String, key: String, color: Color) -> void:
-	var rail_start := Vector2(132, 108)
-	var rail_end := Vector2(270, 108)
-	draw_line(rail_start, rail_end, Color(0.02, 0.02, 0.08, 0.90), 5.0)
-	draw_line(rail_start, rail_end, Color(color, 0.62), 1.0)
-
-	var beat_length_ms := 500.0
-	if not _chart.is_empty():
-		beat_length_ms = 60000.0 / float(_chart.bpm)
-	var beat_index := 0
-	if _song_time_ms >= 0:
-		beat_index = int(floor(float(_song_time_ms) / beat_length_ms)) % 4
-	for index in 4:
-		var marker_x := 146.0 + float(index) * 29.0
-		var marker_color := color if index == beat_index else Color(1, 1, 1, 0.28)
-		draw_circle(Vector2(marker_x, 108), 3.0 if index == beat_index else 2.0, marker_color)
-		draw_string(font, Vector2(marker_x - 3, 97), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, marker_color)
-
+func _draw_fixed_key_anchors(font: Font, section: Dictionary) -> void:
 	var next_event = _next_pending_event()
+	var next_instrument := ""
+	var next_delta_ms := 2_147_483_647
 	if next_event != null:
-		var delta_ms: int = next_event.time_ms - _song_time_ms
-		if delta_ms <= 2100:
-			var travel := clampf(1.0 - float(delta_ms) / 2000.0, 0.0, 1.0)
-			var pulse_x := lerpf(rail_start.x, rail_end.x - 24.0, travel)
-			var pulse_color: Color = COLORS[next_event.instrument]
-			draw_circle(Vector2(pulse_x, rail_start.y), 6.0, Color(0.02, 0.02, 0.08, 0.95))
-			draw_arc(Vector2(pulse_x, rail_start.y), 6.0, 0, TAU, 20, pulse_color, 2.0)
-			draw_line(Vector2(pulse_x - 4, rail_start.y), Vector2(pulse_x + 4, rail_start.y), pulse_color, 1.0)
+		next_instrument = next_event.instrument
+		next_delta_ms = next_event.time_ms - _song_time_ms
+	var now := Time.get_ticks_msec()
 
-	var target_center := Vector2(278, 108)
-	var target_pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 100.0)
-	draw_circle(target_center, 24.0 + target_pulse * 2.0, Color(0.02, 0.02, 0.08, 0.86))
-	draw_arc(target_center, 23.0, 0, TAU, 32, color, 2.0)
-	draw_string(font, Vector2(263, 116), key, HORIZONTAL_ALIGNMENT_CENTER, 30, 21, Color.WHITE)
-	draw_string(font, Vector2(246, 143), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_CENTER, 64, 8, color)
-	draw_string(font, Vector2(231, 154), "HIT ON THE PULSE", HORIZONTAL_ALIGNMENT_CENTER, 94, 6, Color("d8d5ff"))
+	for instrument in INSTRUMENTS:
+		var center := _instrument_anchor(instrument)
+		var color: Color = COLORS[instrument]
+		var target_imminent: bool = instrument == next_instrument and next_delta_ms <= 1000
+		var ensemble_available: bool = section.instrument == "ensemble"
+		var section_active: bool = section.instrument == instrument or target_imminent
+		var pressed: bool = int(_pad_flash_until.get(instrument, 0)) > now
+		var fill := Color(0.02, 0.02, 0.08, 0.82)
+		if pressed:
+			fill = Color(color, 0.48)
+		draw_circle(center, 14.0, fill)
+		var outline := color
+		outline.a = 0.92 if section_active else (0.48 if ensemble_available else 0.24)
+		draw_arc(center, 14.0, 0, TAU, 28, outline, 2.0 if section_active else 1.0)
+		var inactive_text := Color("aaa6c0") if ensemble_available else Color("77738e")
+		draw_string(font, center + Vector2(-8, 6), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 16, 13, Color.WHITE if section_active else inactive_text)
+		draw_string(font, center + Vector2(-25, 27), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_CENTER, 50, 6, color if section_active else inactive_text)
 
-	if Time.get_ticks_msec() < _hit_burst_until:
-		var life := clampf(float(_hit_burst_until - Time.get_ticks_msec()) / 260.0, 0.0, 1.0)
-		var burst_color := color
-		burst_color.a = life * 0.70
-		draw_arc(target_center, 25.0 + (1.0 - life) * 24.0, 0, TAU, 40, burst_color, 2.0)
-		for ray_index in 8:
-			var ray_angle := TAU * float(ray_index) / 8.0
-			var ray_from := target_center + Vector2.from_angle(ray_angle) * 28.0
-			var ray_to := target_center + Vector2.from_angle(ray_angle) * (32.0 + (1.0 - life) * 12.0)
-			draw_line(ray_from, ray_to, burst_color, 1.0)
+		if target_imminent:
+			var cue_progress: float = _director.cue_progress(next_delta_ms)
+			var cue_radius: float = lerpf(29.0, 16.0, cue_progress)
+			var cue_color := color
+			cue_color.a = 0.45 + cue_progress * 0.55
+			draw_arc(center, cue_radius, 0, TAU, 36, cue_color, 2.0)
+			for corner in 4:
+				var angle := PI / 4.0 + float(corner) * PI / 2.0
+				var marker_from := center + Vector2.from_angle(angle) * (cue_radius - 3.0)
+				var marker_to := center + Vector2.from_angle(angle) * (cue_radius + 3.0)
+				draw_line(marker_from, marker_to, cue_color, 1.0)
+
+		if instrument == _active_instrument and now < _hit_burst_until:
+			_draw_anchor_hit_burst(center, color, now)
+
+
+func _draw_anchor_hit_burst(center: Vector2, color: Color, now: int) -> void:
+	var life := clampf(float(_hit_burst_until - now) / 260.0, 0.0, 1.0)
+	var burst_color := color
+	burst_color.a = life * 0.70
+	draw_arc(center, 16.0 + (1.0 - life) * 20.0, 0, TAU, 36, burst_color, 2.0)
+	for ray_index in 8:
+		var ray_angle := TAU * float(ray_index) / 8.0
+		var ray_from := center + Vector2.from_angle(ray_angle) * 18.0
+		var ray_to := center + Vector2.from_angle(ray_angle) * (23.0 + (1.0 - life) * 8.0)
+		draw_line(ray_from, ray_to, burst_color, 1.0)
+
+
+func _instrument_anchor(instrument: String) -> Vector2:
+	var index := INSTRUMENTS.find(instrument)
+	return Vector2(55.0 + float(maxi(0, index)) * 70.0, 142.0)
 
 
 func _focus_instrument(section: Dictionary) -> String:
@@ -576,10 +586,10 @@ func _draw_feedback() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var remaining := float(_feedback_until - Time.get_ticks_msec()) / 420.0
-	var pop_y := 59.0 - minf(1.0, remaining) * 4.0
+	var pop_y := 44.0 - minf(1.0, remaining) * 4.0
 	var shadow := Color(0.02, 0.02, 0.08, 0.85)
-	draw_string(font, Vector2(205, pop_y + 1), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 104, 12, shadow)
-	draw_string(font, Vector2(204, pop_y), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 104, 12, _feedback_color)
+	draw_string(font, Vector2(106, pop_y + 1), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 12, shadow)
+	draw_string(font, Vector2(105, pop_y), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 12, _feedback_color)
 	var border_color := _feedback_color
 	border_color.a = clampf(remaining * 0.25, 0.0, 0.25)
 	draw_rect(Rect2(2, 27, 316, 138), border_color, false, 2.0)
@@ -595,21 +605,20 @@ func _draw_section_transition() -> void:
 	var instrument: String = _focus_instrument(section)
 	var color: Color = COLORS[instrument]
 	var remaining := clampf(float(_section_transition_until - now) / 760.0, 0.0, 1.0)
-	var panel_alpha := minf(0.88, remaining * 1.6)
-	draw_rect(Rect2(126, 35, 186, 42), Color(0.02, 0.02, 0.08, panel_alpha))
-	draw_rect(Rect2(126, 35, 3, 42), color)
+	var panel_alpha := minf(0.82, remaining * 1.5)
+	draw_rect(Rect2(78, 29, 164, 18), Color(0.02, 0.02, 0.08, panel_alpha))
+	draw_rect(Rect2(78, 46, 164, 1), color)
 	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(139, 53), section.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
-	draw_string(font, Vector2(139, 68), section.instruction, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, color)
+	draw_string(font, Vector2(84, 41), section.instruction, HORIZONTAL_ALIGNMENT_CENTER, 152, 7, color)
 
 
 func _draw_count_in() -> void:
 	var font := ThemeDB.fallback_font
 	var count := clampi(int(ceil(float(-_song_time_ms) / 500.0)), 1, 4)
-	var center := Vector2(278, 108)
+	var center := Vector2(160, 77)
 	draw_circle(center, 28.0, Color(0.03, 0.03, 0.10, 0.94))
 	draw_arc(center, 28.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - fmod(float(-_song_time_ms), 500.0) / 500.0), 32, Color("2de2e6"), 3.0)
-	draw_string(font, Vector2(259, 118), str(count), HORIZONTAL_ALIGNMENT_CENTER, 38, 28, Color.WHITE)
+	draw_string(font, center + Vector2(-19, 10), str(count), HORIZONTAL_ALIGNMENT_CENTER, 38, 28, Color.WHITE)
 
 
 func _draw_pause_overlay() -> void:

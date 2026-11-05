@@ -52,3 +52,8 @@ func section_at(time_ms: int) -> Dictionary:
 			break
 		current = section
 	return current
+
+
+func cue_progress(delta_ms: int, window_ms: int = 1000) -> float:
+	var safe_window := maxi(1, window_ms)
+	return clampf(1.0 - float(maxi(0, delta_ms)) / float(safe_window), 0.0, 1.0)
