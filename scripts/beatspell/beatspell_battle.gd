@@ -2,6 +2,7 @@ extends Control
 
 const SpellMatcherScript = preload("res://scripts/beatspell/spell_matcher.gd")
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
+const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
 const BPM := 120.0
@@ -24,6 +25,7 @@ const SKILL_COLORS := {
 
 var _matcher = SpellMatcherScript.new()
 var _battle = BattleModelScript.new()
+var _director = BattleDirectorScript.new()
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
 var _audio_ready := false
@@ -32,6 +34,7 @@ var _song_start_ticks := 0
 var _song_time_ms := -2000
 var _music_started := false
 var _bar_index := -1
+var _active_phase := 1
 var _phrase_inputs: Array = []
 var _phrase_broken := false
 var _feedback := "LISTEN TO THE PULSE"
@@ -112,6 +115,7 @@ func _start_run() -> void:
 	_song_time_ms = -2000
 	_music_started = false
 	_bar_index = -1
+	_active_phase = 1
 	_phrase_inputs.clear()
 	_phrase_broken = false
 	_feedback = "LISTEN TO THE PULSE"
@@ -148,7 +152,13 @@ func _update_bar() -> void:
 		return
 	if _bar_index >= 0:
 		_resolve_bar(_bar_index)
+		if _finished:
+			return
 	_bar_index = new_bar
+	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
+	if next_phase != _active_phase:
+		_active_phase = next_phase
+		_show_feedback("PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], Color("ff9a6b"), 1050)
 	_phrase_inputs.clear()
 	_phrase_broken = false
 
@@ -220,7 +230,7 @@ func _cast_skill(skill: String, grade: String) -> void:
 
 
 func _resolve_boss_attack() -> void:
-	var result: Dictionary = _battle.boss_attack(2)
+	var result: Dictionary = _battle.boss_attack(_director.attack_damage(_active_phase))
 	_boss_attack_until = Time.get_ticks_msec() + 520
 	if result.blocked:
 		_shield_flash_until = Time.get_ticks_msec() + 620
@@ -234,7 +244,7 @@ func _resolve_boss_attack() -> void:
 
 
 func _is_attack_bar(bar: int) -> bool:
-	return bar >= 3 and (bar + 1) % 4 == 0
+	return _director.is_attack_bar(bar, _active_phase)
 
 
 func _show_feedback(text: String, color: Color, duration_ms: int) -> void:
@@ -360,6 +370,7 @@ func _draw() -> void:
 	_draw_health()
 	_draw_player()
 	_draw_boss()
+	_draw_spell_effects()
 	_draw_beat_ring()
 	_draw_spell_cards()
 	_draw_feedback()
@@ -407,6 +418,9 @@ func _draw_health() -> void:
 	draw_rect(Rect2(219, 18, 90.0 * float(_battle.boss_hp) / float(_battle.MAX_BOSS_HP), 3), Color("ff668e"))
 	if _battle.shield_active:
 		draw_string(font, Vector2(109, 20), "AEGIS READY", HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Color("45e6ff"))
+	else:
+		var phase_color := Color("8d7dff") if _active_phase == 1 else Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
+		draw_string(font, Vector2(109, 13), "PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], HORIZONTAL_ALIGNMENT_CENTER, 102, 6, phase_color)
 
 
 func _draw_player() -> void:
@@ -423,6 +437,10 @@ func _draw_player() -> void:
 	if _battle.shield_active or now < _shield_flash_until:
 		draw_arc(center, 29.0, -2.2, 2.2, 32, Color("45e6ff"), 2.0)
 		draw_arc(center, 25.0, -2.2, 2.2, 32, Color(0.27, 0.90, 1.0, 0.25), 1.0)
+		for rune_index in 3:
+			var rune_angle := float(now) / 340.0 + float(rune_index) * TAU / 3.0
+			var rune_position := center + Vector2(cos(rune_angle), sin(rune_angle)) * 27.0
+			draw_circle(rune_position, 2.0, Color("b9f7ff"))
 	draw_circle(center + Vector2(0, -13), 9.0, Color("17152c"))
 	draw_colored_polygon(PackedVector2Array([
 		center + Vector2(-15, 27), center + Vector2(-10, -6), center + Vector2(0, -18),
@@ -449,7 +467,8 @@ func _draw_boss() -> void:
 		var attack_progress := fmod(float(maxi(0, _song_time_ms)), float(BAR_MS)) / float(BAR_MS)
 		draw_circle(center, 39.0 + attack_progress * 8.0, Color(1.0, 0.18, 0.35, 0.06 + attack_progress * 0.12))
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, Color("ff4f70"), 2.0)
-	var body_color := Color("4a215d") if now >= _boss_hit_until else Color("ff6b5e")
+	var phase_colors := [Color("4a215d"), Color("692851"), Color("7d203f")]
+	var body_color: Color = phase_colors[_active_phase - 1] if now >= _boss_hit_until else Color("ff6b5e")
 	draw_colored_polygon(PackedVector2Array([
 		center + Vector2(-24, -8), center + Vector2(-13, -27), center + Vector2(0, -18),
 		center + Vector2(14, -29), center + Vector2(25, -7), center + Vector2(19, 20),
@@ -463,6 +482,39 @@ func _draw_boss() -> void:
 	if warning:
 		var font := ThemeDB.fallback_font
 		draw_string(font, Vector2(220, 119), "STRIKE INCOMING", HORIZONTAL_ALIGNMENT_CENTER, 78, 6, Color("ff668e"))
+
+
+func _draw_spell_effects() -> void:
+	var now := Time.get_ticks_msec()
+	if now < _skill_flash_until:
+		var progress := clampf(1.0 - float(_skill_flash_until - now) / 620.0, 0.0, 1.0)
+		match _last_skill:
+			"fireball":
+				var eased := 1.0 - pow(1.0 - progress, 2.0)
+				var start := Vector2(82, 87)
+				var target := Vector2(234, 77)
+				var projectile := start.lerp(target, eased)
+				for trail_index in 4:
+					var trail_position := projectile.lerp(start, 0.05 + float(trail_index) * 0.055)
+					var trail_color := Color("ff6b5e")
+					trail_color.a = 0.34 - float(trail_index) * 0.065
+					draw_circle(trail_position, 7.0 - float(trail_index), trail_color)
+				draw_circle(projectile, 8.0, Color(1.0, 0.25, 0.18, 0.16))
+				draw_circle(projectile, 4.0, Color("ffc45e"))
+			"heal":
+				for particle_index in 7:
+					var phase := fmod(progress + float(particle_index) * 0.17, 1.0)
+					var particle_position := Vector2(61 + sin(float(particle_index) * 2.3) * 18.0, 108 - phase * 54.0)
+					var particle_color := Color("69f0a5")
+					particle_color.a = sin(phase * PI) * 0.75
+					draw_circle(particle_position, 2.0 + phase, particle_color)
+	if now < _boss_attack_until:
+		var strike_progress := clampf(1.0 - float(_boss_attack_until - now) / 520.0, 0.0, 1.0)
+		var strike_head := Vector2(238, 74).lerp(Vector2(84, 91), strike_progress)
+		var strike_color := Color("45e6ff") if now < _shield_flash_until else Color("ff4f70")
+		strike_color.a = 0.78 * (1.0 - strike_progress * 0.55)
+		draw_line(Vector2(238, 74), strike_head, strike_color, 3.0)
+		draw_circle(strike_head, 5.0, Color(strike_color, 0.22))
 
 
 func _draw_beat_ring() -> void:
@@ -497,9 +549,12 @@ func _draw_spell_cards() -> void:
 		var skill: String = cards[card_index]
 		var card_rect := Rect2(6 + card_index * 104, 130, 100, 32)
 		var active := _last_skill == skill and Time.get_ticks_msec() < _skill_flash_until
+		var teaching := _director.tutorial_skill(_bar_index) == skill and not _finished
 		var color: Color = SKILL_COLORS[skill]
 		draw_rect(card_rect, Color(0.05, 0.04, 0.12, 0.94))
-		draw_rect(card_rect, Color(color, 0.85 if active else 0.30), false, 1.0)
+		if teaching:
+			draw_rect(card_rect.grow(2.0), Color(color, 0.13), true)
+		draw_rect(card_rect, Color(color, 0.85 if active or teaching else 0.30), false, 2.0 if teaching else 1.0)
 		draw_string(font, card_rect.position + Vector2(7, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 45, 7, color)
 		var pattern: Array = _matcher.pattern_for(skill)
 		for slot_index in 4:
@@ -516,6 +571,9 @@ func _draw_spell_cards() -> void:
 				draw_circle(symbol_position, 1.0, Color("514a72"))
 		draw_string(font, card_rect.position + Vector2(7, 25), "D/F", HORIZONTAL_ALIGNMENT_LEFT, 25, 5, Color("ffc45e"))
 		draw_string(font, card_rect.position + Vector2(32, 25), "J/K", HORIZONTAL_ALIGNMENT_LEFT, 25, 5, Color("45e6ff"))
+	var tutorial_skill: String = _director.tutorial_skill(_bar_index)
+	if not tutorial_skill.is_empty() and not _finished:
+		draw_string(font, Vector2(111, 119), "PRACTICE · %s" % SKILL_NAMES[tutorial_skill], HORIZONTAL_ALIGNMENT_CENTER, 98, 6, SKILL_COLORS[tutorial_skill])
 
 
 func _draw_feedback() -> void:

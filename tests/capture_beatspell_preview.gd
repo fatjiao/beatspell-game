@@ -13,6 +13,8 @@ func _capture() -> void:
 	stage.set_process(false)
 	stage.set("_song_time_ms", 1050)
 	stage.set("_bar_index", 0)
+	stage.set("_last_skill", "fireball")
+	stage.set("_skill_flash_until", Time.get_ticks_msec() + 420)
 	stage.set("_phrase_inputs", [
 		{"slot": 0, "action": "charge", "grade": "perfect", "offset_ms": 8},
 		{"slot": 1, "action": "cast", "grade": "perfect", "offset_ms": -11},
@@ -24,8 +26,12 @@ func _capture() -> void:
 		quit(1)
 		return
 
-	stage.set("_song_time_ms", 6500)
-	stage.set("_bar_index", 3)
+	stage.set("_song_time_ms", 17_000)
+	stage.set("_bar_index", 8)
+	stage.set("_active_phase", 2)
+	stage.get("_battle").boss_hp = 20
+	stage.set("_last_skill", "")
+	stage.set("_skill_flash_until", 0)
 	stage.set("_phrase_inputs", [
 		{"slot": 0, "action": "charge", "grade": "perfect", "offset_ms": 4},
 		{"slot": 1, "action": "charge", "grade": "perfect", "offset_ms": 19},
@@ -41,6 +47,7 @@ func _capture() -> void:
 	stage.set("_result_text", "BEAST DISPELLED")
 	stage.set("_feedback_color", Color("69f0a5"))
 	stage.get("_battle").boss_hp = 0
+	stage.set("_active_phase", 3)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

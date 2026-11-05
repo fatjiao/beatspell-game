@@ -13,6 +13,7 @@ func _init() -> void:
 		{"name": "flowing_staff", "script": preload("res://tests/test_flowing_staff.gd")},
 		{"name": "spell_matcher", "script": preload("res://tests/test_spell_matcher.gd")},
 		{"name": "battle_model", "script": preload("res://tests/test_battle_model.gd")},
+		{"name": "battle_director", "script": preload("res://tests/test_battle_director.gd")},
 	]
 	var failure_count := 0
 	for suite in suites:
