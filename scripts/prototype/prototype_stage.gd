@@ -4,6 +4,7 @@ const ChartLoaderScript = preload("res://scripts/rhythm/chart_loader.gd")
 const RhythmJudgeScript = preload("res://scripts/rhythm/rhythm_judge.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const StageDirectorScript = preload("res://scripts/presentation/stage_director.gd")
+const FlowingStaffScript = preload("res://scripts/presentation/flowing_staff.gd")
 const SUBWAY_BACKGROUND: Texture2D = preload("res://assets/art/subway/subway_background.png")
 const LOOP_IDLE: Texture2D = preload("res://assets/art/loop/loop_idle.png")
 
@@ -61,6 +62,7 @@ var _good_count := 0
 var _miss_count := 0
 var _bad_tap_count := 0
 var _director = StageDirectorScript.new()
+var _flowing_staff = FlowingStaffScript.new()
 var _current_section_id := ""
 var _glitch_until := 0
 var _hit_burst_until := 0
@@ -495,75 +497,118 @@ func _draw_cinematic_stage() -> void:
 	draw_rect(Rect2(8, 20, 304, 2), Color(1, 1, 1, 0.10))
 	draw_rect(Rect2(8, 20, 304.0 * progress, 2), focus_color)
 
-	_draw_fixed_key_anchors(font, section)
+	_draw_flowing_staff(font, section)
 	draw_rect(Rect2(0, 168, 320, 12), Color(0.03, 0.03, 0.10, 0.68))
 	draw_string(font, Vector2(8, 177), "P PAUSE   R RETRY   TAB ANALYSIS", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 	draw_string(font, Vector2(268, 177), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 
 
-func _draw_fixed_key_anchors(font: Font, section: Dictionary) -> void:
-	var next_event = _next_pending_event()
-	var next_instrument := ""
-	var next_delta_ms := 2_147_483_647
-	if next_event != null:
-		next_instrument = next_event.instrument
-		next_delta_ms = next_event.time_ms - _song_time_ms
+func _draw_flowing_staff(font: Font, section: Dictionary) -> void:
+	var panel_rect := Rect2(0, _flowing_staff.PANEL_TOP, 320, _flowing_staff.PANEL_BOTTOM - _flowing_staff.PANEL_TOP)
+	draw_rect(panel_rect, Color(0.025, 0.025, 0.085, 0.88))
+	draw_rect(Rect2(0, _flowing_staff.PANEL_TOP, 48, panel_rect.size.y), Color(0.02, 0.02, 0.07, 0.92))
+	draw_line(Vector2(0, _flowing_staff.PANEL_TOP), Vector2(320, _flowing_staff.PANEL_TOP), Color(0.72, 0.70, 0.92, 0.30), 1.0)
+
+	_draw_score_beat_guides()
 	var now := Time.get_ticks_msec()
-
-	for instrument in INSTRUMENTS:
-		var center := _instrument_anchor(instrument)
+	for row_index in INSTRUMENTS.size():
+		var instrument: String = INSTRUMENTS[row_index]
+		var row_y: float = _flowing_staff.row_center(instrument)
 		var color: Color = COLORS[instrument]
-		var target_imminent: bool = instrument == next_instrument and next_delta_ms <= 1000
-		var ensemble_available: bool = section.instrument == "ensemble"
-		var section_active: bool = section.instrument == instrument or target_imminent
 		var pressed: bool = int(_pad_flash_until.get(instrument, 0)) > now
-		var lamp_alpha := 0.66 if section_active else (0.34 if ensemble_available else 0.16)
-		if pressed:
-			lamp_alpha = 1.0
-		var lamp_color := color
-		lamp_color.a = lamp_alpha
-		draw_rect(Rect2(center + Vector2(-13, -2), Vector2(26, 4)), Color(0.02, 0.02, 0.08, 0.76))
-		draw_rect(Rect2(center + Vector2(-12, -1), Vector2(24, 2)), lamp_color)
-		var inactive_text := Color("9995ad") if ensemble_available else Color("69667c")
-		draw_string(font, center + Vector2(-4, 11), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 8, 6, Color("d8d5ff") if section_active else inactive_text)
+		var section_active: bool = section.instrument == instrument or section.instrument == "ensemble"
+		if section_active or pressed:
+			var row_glow := color
+			row_glow.a = 0.055 if not pressed else 0.18
+			draw_rect(Rect2(0, row_y - 6, 320, 12), row_glow)
+		_draw_instrument_staff(font, instrument, row_y, section_active)
 
-		if target_imminent:
-			var cue_progress: float = _director.cue_progress(next_delta_ms)
-			_draw_floor_cue(center, color, cue_progress)
-
-		if instrument == _active_instrument and now < _hit_burst_until:
-			_draw_floor_hit_burst(center, color, now)
-
-
-func _draw_floor_cue(center: Vector2, color: Color, progress: float) -> void:
-	var glow := color
-	glow.a = 0.035 + progress * 0.10
-	var half_width := lerpf(15.0, 7.0, progress)
-	var beam := PackedVector2Array([
-		center + Vector2(-half_width, -1),
-		center + Vector2(half_width, -1),
-		center + Vector2(5, -68),
-		center + Vector2(-5, -68),
-	])
-	draw_colored_polygon(beam, glow)
-	var floor_glow := color
-	floor_glow.a = 0.08 + progress * 0.18
-	draw_ellipse_shadow(center, 18.0 + progress * 5.0, 3.0 + progress * 2.0, floor_glow)
-	draw_rect(Rect2(center + Vector2(-14, -2), Vector2(28, 4)), Color(color, 0.45 + progress * 0.45))
+	draw_line(
+		Vector2(_flowing_staff.HIT_X, _flowing_staff.PANEL_TOP + 2),
+		Vector2(_flowing_staff.HIT_X, _flowing_staff.PANEL_BOTTOM - 2),
+		Color(0.94, 0.94, 1.0, 0.64),
+		1.0
+	)
+	draw_rect(Rect2(_flowing_staff.HIT_X - 1, _flowing_staff.PANEL_TOP, 3, 2), Color("ffffff"))
+	_draw_staff_events(font)
+	if now < _hit_burst_until:
+		_draw_staff_hit_burst(now)
 
 
-func _draw_floor_hit_burst(center: Vector2, color: Color, now: int) -> void:
+func _draw_instrument_staff(font: Font, instrument: String, row_y: float, active: bool) -> void:
+	var color: Color = COLORS[instrument]
+	var line_color := Color(0.78, 0.77, 0.91, 0.28 if active else 0.16)
+	for line_offset in [-4.0, -2.0, 0.0, 2.0, 4.0]:
+		draw_line(Vector2(48, row_y + line_offset), Vector2(316, row_y + line_offset), line_color, 1.0)
+	var key_color := color
+	key_color.a = 0.95 if active else 0.52
+	draw_string(font, Vector2(5, row_y + 3), KEY_LABELS[instrument], HORIZONTAL_ALIGNMENT_CENTER, 10, 7, key_color)
+	draw_string(font, Vector2(17, row_y + 2), DISPLAY_NAMES[instrument], HORIZONTAL_ALIGNMENT_LEFT, 27, 5, Color(0.82, 0.81, 0.94, 0.88 if active else 0.48))
+
+
+func _draw_score_beat_guides() -> void:
+	if _chart.is_empty():
+		return
+	var beat_ms := 60000.0 / float(_chart.bpm)
+	var first_beat := int(floor(float(_song_time_ms) / beat_ms))
+	for beat_offset in range(0, 10):
+		var beat_index := first_beat + beat_offset
+		var beat_time := int(round(float(beat_index) * beat_ms))
+		var delta_ms := beat_time - _song_time_ms
+		if not _flowing_staff.is_note_visible(delta_ms):
+			continue
+		var guide_x: float = _flowing_staff.note_x(_song_time_ms, beat_time)
+		if guide_x < 48.0 or guide_x > 316.0:
+			continue
+		var strong_beat: bool = posmod(beat_index, 4) == 0
+		var alpha := 0.18 if strong_beat else 0.07
+		draw_line(Vector2(guide_x, _flowing_staff.PANEL_TOP + 1), Vector2(guide_x, _flowing_staff.PANEL_BOTTOM - 1), Color(0.85, 0.84, 0.96, alpha), 1.0)
+
+
+func _draw_staff_events(font: Font) -> void:
+	for chart_event in _events:
+		if chart_event.consumed:
+			continue
+		var delta_ms: int = chart_event.time_ms - _song_time_ms
+		if not _flowing_staff.is_note_visible(delta_ms):
+			continue
+		var note_x: float = _flowing_staff.note_x(_song_time_ms, chart_event.time_ms)
+		if note_x < 48.0 or note_x > 316.0:
+			continue
+		var row_y: float = _flowing_staff.row_center(chart_event.instrument)
+		var pitch_offset := float([-2, 0, 2, -1, 1][posmod(int(chart_event.time_ms / 500), 5)])
+		var note_position := Vector2(note_x, row_y + pitch_offset)
+		var color: Color = COLORS[chart_event.instrument]
+		var approach := clampf(1.0 - float(maxi(0, delta_ms)) / 1000.0, 0.0, 1.0)
+		if approach > 0.0:
+			var halo := color
+			halo.a = 0.06 + approach * 0.14
+			draw_circle(note_position, 4.0 + approach * 2.0, halo)
+		_draw_score_note(note_position, chart_event.instrument, color)
+		if delta_ms <= 1200:
+			draw_string(font, note_position + Vector2(-3, -5), KEY_LABELS[chart_event.instrument], HORIZONTAL_ALIGNMENT_CENTER, 7, 5, Color(0.96, 0.95, 1.0, 0.82))
+
+
+func _draw_score_note(position: Vector2, instrument: String, color: Color) -> void:
+	if instrument == "drums":
+		draw_line(position + Vector2(-3, -2), position + Vector2(3, 2), color, 2.0)
+		draw_line(position + Vector2(-3, 2), position + Vector2(3, -2), color, 2.0)
+		draw_line(position + Vector2(3, 0), position + Vector2(3, -6), color, 1.0)
+		return
+	draw_set_transform(position, -0.24, Vector2(1.35, 0.78))
+	draw_circle(Vector2.ZERO, 3.0, color)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var stem_direction := -1.0 if instrument in ["bass", "synth"] else 1.0
+	var stem_x := position.x + (2.5 if stem_direction > 0.0 else -2.5)
+	draw_line(Vector2(stem_x, position.y), Vector2(stem_x, position.y - 7.0 * stem_direction), color, 1.0)
+
+
+func _draw_staff_hit_burst(now: int) -> void:
+	var row_y: float = _flowing_staff.row_center(_active_instrument)
+	var color: Color = COLORS[_active_instrument]
 	var life := clampf(float(_hit_burst_until - now) / 260.0, 0.0, 1.0)
-	var burst_color := color
-	burst_color.a = life * 0.42
-	draw_ellipse_shadow(center, 20.0 + (1.0 - life) * 24.0, 4.0 + (1.0 - life) * 4.0, burst_color)
-	draw_line(center + Vector2(-4, -4), center + Vector2(-9, -10 - (1.0 - life) * 6.0), burst_color, 1.0)
-	draw_line(center + Vector2(4, -4), center + Vector2(9, -10 - (1.0 - life) * 6.0), burst_color, 1.0)
-
-
-func _instrument_anchor(instrument: String) -> Vector2:
-	var index := INSTRUMENTS.find(instrument)
-	return Vector2(55.0 + float(maxi(0, index)) * 70.0, 151.0)
+	color.a = life * 0.55
+	draw_circle(Vector2(_flowing_staff.HIT_X, row_y), 3.0 + (1.0 - life) * 7.0, color, false, 1.0)
 
 
 func _focus_instrument(section: Dictionary) -> String:
