@@ -5,6 +5,7 @@ func _init() -> void:
 	var suites := [
 		{"name": "smoke", "script": preload("res://tests/test_smoke.gd")},
 		{"name": "rhythm_judge", "script": preload("res://tests/test_rhythm_judge.gd")},
+		{"name": "chart_loader", "script": preload("res://tests/test_chart_loader.gd")},
 	]
 	var failure_count := 0
 	for suite in suites:

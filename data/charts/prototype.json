@@ -1,0 +1,28 @@
+{
+  "title": "Neon Rehearsal",
+  "bpm": 120,
+  "duration_ms": 16000,
+  "events": [
+    {"time_ms": 2000, "instrument": "drums", "type": "tap"},
+    {"time_ms": 2500, "instrument": "drums", "type": "tap"},
+    {"time_ms": 3000, "instrument": "drums", "type": "tap"},
+    {"time_ms": 3500, "instrument": "drums", "type": "tap"},
+    {"time_ms": 4500, "instrument": "bass", "type": "tap"},
+    {"time_ms": 5000, "instrument": "bass", "type": "tap"},
+    {"time_ms": 5500, "instrument": "bass", "type": "tap"},
+    {"time_ms": 6000, "instrument": "bass", "type": "tap"},
+    {"time_ms": 7000, "instrument": "synth", "type": "tap"},
+    {"time_ms": 7500, "instrument": "synth", "type": "tap"},
+    {"time_ms": 8000, "instrument": "synth", "type": "tap"},
+    {"time_ms": 8500, "instrument": "synth", "type": "tap"},
+    {"time_ms": 9500, "instrument": "lead", "type": "tap"},
+    {"time_ms": 10000, "instrument": "lead", "type": "tap"},
+    {"time_ms": 10500, "instrument": "lead", "type": "tap"},
+    {"time_ms": 11000, "instrument": "lead", "type": "tap"},
+    {"time_ms": 12000, "instrument": "drums", "type": "tap"},
+    {"time_ms": 12500, "instrument": "bass", "type": "tap"},
+    {"time_ms": 13000, "instrument": "synth", "type": "tap"},
+    {"time_ms": 13500, "instrument": "lead", "type": "tap"}
+  ]
+}
+
