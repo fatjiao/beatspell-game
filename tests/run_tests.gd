@@ -1,0 +1,24 @@
+extends SceneTree
+
+
+func _init() -> void:
+	var suites := [
+		{"name": "smoke", "script": preload("res://tests/test_smoke.gd")},
+		{"name": "rhythm_judge", "script": preload("res://tests/test_rhythm_judge.gd")},
+	]
+	var failure_count := 0
+	for suite in suites:
+		var instance = suite.script.new()
+		var failures: Array = instance.run()
+		if failures.is_empty():
+			print("PASS: %s" % suite.name)
+		else:
+			for message in failures:
+				printerr("FAIL: %s: %s" % [suite.name, message])
+			failure_count += failures.size()
+	if failure_count == 0:
+		print("All tests passed.")
+		quit(0)
+	else:
+		printerr("%d test failure(s)." % failure_count)
+		quit(1)
