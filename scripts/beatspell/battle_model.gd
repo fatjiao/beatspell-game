@@ -1,7 +1,7 @@
 extends RefCounted
 
 const MAX_PLAYER_HP := 5
-const MAX_BOSS_HP := 18
+const MAX_BOSS_HP := 36
 
 var player_hp := MAX_PLAYER_HP
 var boss_hp := MAX_BOSS_HP

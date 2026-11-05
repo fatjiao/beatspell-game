@@ -2,6 +2,7 @@ extends Control
 
 const CalibrationMath = preload("res://scripts/settings/calibration.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
+const MAIN_SCENE := "res://scenes/beatspell/beatspell_battle.tscn"
 
 const BPM := 100.0
 const BEAT_LENGTH_MS := int(60000.0 / BPM)
@@ -37,13 +38,13 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		get_tree().change_scene_to_file("res://scenes/prototype/prototype_stage.tscn")
+		get_tree().change_scene_to_file(MAIN_SCENE)
 		return
 	if _finished and event.is_action_pressed("ui_accept"):
 		var settings := SettingsStore.load_settings()
 		settings.audio_offset_ms = _result_ms
 		SettingsStore.save_settings(settings)
-		get_tree().change_scene_to_file("res://scenes/prototype/prototype_stage.tscn")
+		get_tree().change_scene_to_file(MAIN_SCENE)
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_R:
@@ -124,4 +125,3 @@ func _make_tone(frequency: float, duration_seconds: float) -> AudioStreamWAV:
 	stream.stereo = false
 	stream.data = bytes
 	return stream
-
