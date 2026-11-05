@@ -13,5 +13,8 @@ func run() -> Array[String]:
 		failures.append("instrument_synth input action is missing")
 	if not InputMap.has_action("instrument_lead"):
 		failures.append("instrument_lead input action is missing")
+	if not ResourceLoader.exists("res://assets/art/subway/subway_background.png"):
+		failures.append("subway background is missing")
+	if not ResourceLoader.exists("res://assets/art/loop/loop_idle.png"):
+		failures.append("Loop character art is missing")
 	return failures
-
