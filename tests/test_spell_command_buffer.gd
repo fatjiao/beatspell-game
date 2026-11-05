@@ -10,9 +10,15 @@ func run() -> Array[String]:
 	var start: Dictionary = command.register_step(2510, 500.0)
 	_expect(failures, start.status == "accepted", "FLARE can begin on an arbitrary whole beat")
 	_expect(failures, command.events[0].ring_tick == 1, "step preserves its absolute four-position ring phase")
+	_expect(failures, command.events[0].has("ring_phase"), "step stores its unquantized live ring phase")
+	if command.events[0].has("ring_phase"):
+		_expect(failures, command.events[0].ring_phase > 0.25, "late step is drawn after its target corner")
 	var flare: Dictionary = command.finish(2990, 500.0)
 	_expect(failures, flare.skill == "fireball" and flare.grade == "perfect", "whole-beat step then finish casts FLARE")
 	_expect(failures, flare.events.size() == 2 and flare.events[1].ring_tick == 2, "finish event keeps its global ring phase")
+	_expect(failures, flare.events.size() == 2 and flare.events[1].has("ring_phase"), "finish stores its unquantized live ring phase")
+	if flare.events.size() == 2 and flare.events[1].has("ring_phase"):
+		_expect(failures, flare.events[1].ring_phase < 0.5, "early finish is drawn before its target corner")
 	_expect(failures, not command.is_active(), "successful finish clears the command")
 
 	command.register_step(4000, 500.0)

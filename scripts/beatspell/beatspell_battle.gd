@@ -551,8 +551,13 @@ func _draw_beat_ring() -> void:
 	if displayed_events.is_empty() and Time.get_ticks_msec() < _recent_command_until:
 		displayed_events = _recent_command
 	for entry in displayed_events:
-		var angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 4.0
+		var angle := -PI / 2.0 + float(entry.ring_phase) * TAU
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
+		var target_angle := -PI / 2.0 + float(entry.ring_tick) * TAU / 4.0
+		var target_position := center + Vector2(cos(target_angle), sin(target_angle)) * 10.0
+		var trace_color := Color("ffc45e") if entry.action == "step" else Color("45e6ff")
+		trace_color.a = 0.32
+		draw_line(target_position, input_position, trace_color, 1.0)
 		if entry.action == "step":
 			draw_circle(input_position, 3.0, Color("ffc45e"))
 		else:
