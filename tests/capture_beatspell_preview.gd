@@ -43,12 +43,13 @@ func _capture() -> void:
 	stage.set("_bar_index", 8)
 	stage.set("_active_phase", 2)
 	stage.get("_battle").boss_hp = 20
-	stage.set("_last_skill", "")
-	stage.set("_skill_flash_until", 0)
+	stage.get("_battle").shield_active = true
+	stage.set("_last_skill", "shield")
+	stage.set("_skill_flash_until", Time.get_ticks_msec() + 420)
 	command.reset()
 	command.register_step(16_090, 500.0)
-	var flare: Dictionary = command.finish(16_410, 500.0)
-	stage.set("_recent_command", flare.events)
+	var aegis: Dictionary = command.finish(17_000, 500.0)
+	stage.set("_recent_command", aegis.events)
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

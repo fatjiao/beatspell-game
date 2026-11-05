@@ -2,9 +2,13 @@ extends RefCounted
 
 
 func tutorial_skill(bar_index: int) -> String:
-	if bar_index < 0 or bar_index >= 6:
+	if bar_index < 0 or bar_index >= 9:
 		return ""
-	return "fireball" if bar_index < 3 else "heal"
+	if bar_index < 3:
+		return "fireball"
+	if bar_index < 6:
+		return "heal"
+	return "shield"
 
 
 func phase_for_health(boss_hp: int, max_boss_hp: int) -> int:
@@ -20,8 +24,10 @@ func phase_name(phase: int) -> String:
 
 
 func is_attack_bar(bar_index: int, phase: int) -> bool:
-	if bar_index < 6:
+	if bar_index < 8:
 		return false
+	if bar_index == 8:
+		return true
 	match phase:
 		1:
 			return (bar_index + 1) % 4 == 0

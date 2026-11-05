@@ -23,8 +23,10 @@ const SKILL_COLORS := {
 	"shield": Color("45e6ff"),
 	"heal": Color("69f0a5"),
 }
+const SKILL_EFFECTS := {"fireball": "DAMAGE", "shield": "BLOCK", "heal": "RECOVER"}
 const DISPLAY_PATTERNS := {
 	"fireball": [{"tick": 0, "action": "step"}, {"tick": 1, "action": "finish"}],
+	"shield": [{"tick": 0, "action": "step"}, {"tick": 2, "action": "finish"}],
 	"heal": [
 		{"tick": 0, "action": "step"},
 		{"tick": 1, "action": "step"},
@@ -574,10 +576,10 @@ func _draw_beat_ring() -> void:
 
 func _draw_spell_cards() -> void:
 	var font := ThemeDB.fallback_font
-	var cards := ["fireball", "heal"]
+	var cards := ["fireball", "shield", "heal"]
 	for card_index in cards.size():
 		var skill: String = cards[card_index]
-		var card_rect := Rect2(7 + card_index * 153, 130, 146, 32)
+		var card_rect := Rect2(5 + card_index * 104, 130, 102, 32)
 		var active := _last_skill == skill and Time.get_ticks_msec() < _skill_flash_until
 		var teaching := _director.tutorial_skill(_bar_index) == skill and not _finished
 		var color: Color = SKILL_COLORS[skill]
@@ -585,12 +587,14 @@ func _draw_spell_cards() -> void:
 		if teaching:
 			draw_rect(card_rect.grow(2.0), Color(color, 0.13), true)
 		draw_rect(card_rect, Color(color, 0.85 if active or teaching else 0.30), false, 2.0 if teaching else 1.0)
-		draw_string(font, card_rect.position + Vector2(7, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 54, 7, color)
+		draw_string(font, card_rect.position + Vector2(5, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 48, 7, color)
 		var pattern: Array = DISPLAY_PATTERNS[skill]
-		var pattern_end_x := 76.0 + float(pattern[-1].tick) * 18.0
-		draw_line(card_rect.position + Vector2(76, 9), card_rect.position + Vector2(pattern_end_x, 9), Color("514a72"), 1.0)
+		var pattern_end_x := 57.0 + float(pattern[-1].tick) * 14.0
+		draw_line(card_rect.position + Vector2(57, 9), card_rect.position + Vector2(pattern_end_x, 9), Color("514a72"), 1.0)
+		for pattern_tick in int(pattern[-1].tick) + 1:
+			draw_circle(card_rect.position + Vector2(57 + float(pattern_tick) * 14.0, 9), 1.25, Color("514a72"))
 		for pattern_event in pattern:
-			var symbol_position := card_rect.position + Vector2(76 + float(pattern_event.tick) * 18.0, 9)
+			var symbol_position := card_rect.position + Vector2(57 + float(pattern_event.tick) * 14.0, 9)
 			if pattern_event.action == "step":
 				draw_circle(symbol_position, 3.0, Color("ffc45e"))
 			else:
@@ -599,8 +603,8 @@ func _draw_spell_cards() -> void:
 					symbol_position + Vector2(0, 4), symbol_position + Vector2(-4, 0),
 				])
 				draw_colored_polygon(diamond, Color("45e6ff"))
-		draw_string(font, card_rect.position + Vector2(7, 25), "D/F  STEP", HORIZONTAL_ALIGNMENT_LEFT, 57, 5, Color("ffc45e"))
-		draw_string(font, card_rect.position + Vector2(74, 25), "J/K  FINISH", HORIZONTAL_ALIGNMENT_LEFT, 65, 5, Color("45e6ff"))
+		draw_string(font, card_rect.position + Vector2(5, 25), SKILL_EFFECTS[skill], HORIZONTAL_ALIGNMENT_LEFT, 48, 5, Color(color, 0.74))
+		draw_string(font, card_rect.position + Vector2(55, 25), "D/F  ·  J/K", HORIZONTAL_ALIGNMENT_LEFT, 43, 5, Color("aaa6cc"))
 	var tutorial_skill: String = _director.tutorial_skill(_bar_index)
 	if not tutorial_skill.is_empty() and not _finished:
 		draw_string(font, Vector2(111, 119), "PRACTICE · %s" % SKILL_NAMES[tutorial_skill], HORIZONTAL_ALIGNMENT_CENTER, 98, 6, SKILL_COLORS[tutorial_skill])

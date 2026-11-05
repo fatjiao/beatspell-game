@@ -28,6 +28,11 @@ func run() -> Array[String]:
 	_expect(failures, mend.skill == "heal", "three consecutive whole beats cast MEND")
 	_expect(failures, mend.events[1].ring_tick == 1, "second MEND step advances to the next whole-beat corner")
 
+	command.register_step(6000, 500.0)
+	var aegis: Dictionary = command.finish(7000, 500.0)
+	_expect(failures, aegis.skill == "shield", "step, one-beat rest, then finish casts AEGIS")
+	_expect(failures, aegis.events.size() == 2 and aegis.events[1].ring_tick == 2, "AEGIS keeps the skipped beat visible in its ring spacing")
+
 	var empty_finish: Dictionary = command.finish(5000, 500.0)
 	_expect(failures, empty_finish.skill.is_empty(), "finish without steps misses safely")
 	var half_start: Dictionary = command.register_step(5250, 500.0)
@@ -45,9 +50,9 @@ func run() -> Array[String]:
 	if missed_finish.events.size() == 2:
 		_expect(failures, missed_finish.events[1].action == "finish" and missed_finish.events[1].grade == "miss", "off-pulse finish keeps its shape and miss state")
 
-	command.register_step(6000, 500.0)
-	command.register_step(7000, 500.0)
-	var wrong: Dictionary = command.finish(7500, 500.0)
+	command.register_step(9000, 500.0)
+	command.register_step(10000, 500.0)
+	var wrong: Dictionary = command.finish(10500, 500.0)
 	_expect(failures, wrong.skill.is_empty() and not command.is_active(), "unknown rhythm misses and resets immediately")
 
 	command.register_step(8010, 500.0)

@@ -42,8 +42,12 @@ func finish(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
 		reset()
 		return result
 	var finish_tick := int(quantized.tick)
-	if events.size() == 1 and finish_tick - int(events[0].tick) == 1:
-		result.skill = "fireball"
+	if events.size() == 1:
+		var interval := finish_tick - int(events[0].tick)
+		if interval == 1:
+			result.skill = "fireball"
+		elif interval == 2:
+			result.skill = "shield"
 	elif events.size() == 2 \
 		and finish_tick - int(events[0].tick) == 2 \
 		and finish_tick - int(events[1].tick) == 1:
