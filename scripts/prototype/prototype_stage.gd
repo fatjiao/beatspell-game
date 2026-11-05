@@ -39,20 +39,33 @@ var _status := "GET READY"
 var _status_color := Color.WHITE
 var _pad_flash_until := {}
 var _tone_players := {}
+var _music_players := {}
 var _metronome_player: AudioStreamPlayer
 var _finished := false
 var _audio_offset_ms := 0
+var _music_started := false
 
 
 func _ready() -> void:
 	_audio_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_setup_tones()
+	_setup_music()
 	_start_run()
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	_song_time_ms = Time.get_ticks_msec() - _song_start_ticks
+	if not _music_started:
+		_song_time_ms = Time.get_ticks_msec() - _song_start_ticks
+		if _song_time_ms >= 0:
+			_start_music()
+	else:
+		_song_time_ms = int(maxf(0.0, (
+			_music_players.drums.get_playback_position()
+			+ AudioServer.get_time_since_last_mix()
+			- AudioServer.get_output_latency()
+		) * 1000.0))
+		_update_music_layers()
 	if not _finished:
 		_update_metronome()
 		_consume_expired_events()
@@ -99,6 +112,9 @@ func _start_run() -> void:
 	_status = "GET READY"
 	_status_color = Color.WHITE
 	_finished = false
+	_music_started = false
+	for player in _music_players.values():
+		player.stop()
 
 
 func _play_instrument(instrument: String) -> void:
@@ -150,6 +166,44 @@ func _update_metronome() -> void:
 		_last_beat = beat
 		_metronome_player.pitch_scale = 1.35 if beat % 4 == 0 else 1.0
 		_metronome_player.play()
+
+
+func _setup_music() -> void:
+	var files := {
+		"drums": "res://assets/music/chapter1/drums.ogg",
+		"bass": "res://assets/music/chapter1/bass.ogg",
+		"synth": "res://assets/music/chapter1/synth.ogg",
+		"lead": "res://assets/music/chapter1/lead.ogg",
+	}
+	for instrument in INSTRUMENTS:
+		var stream = load(files[instrument])
+		if stream == null:
+			_status = "MISSING MUSIC: %s" % files[instrument]
+			_status_color = Color.RED
+			continue
+		var player := AudioStreamPlayer.new()
+		player.stream = stream
+		player.volume_db = -80.0
+		add_child(player)
+		_music_players[instrument] = player
+
+
+func _start_music() -> void:
+	if _music_players.size() != INSTRUMENTS.size():
+		return
+	_song_start_ticks = Time.get_ticks_msec()
+	_song_time_ms = 0
+	_music_started = true
+	for instrument in INSTRUMENTS:
+		_music_players[instrument].play(0.0)
+	_update_music_layers()
+
+
+func _update_music_layers() -> void:
+	_music_players.drums.volume_db = -7.0
+	_music_players.bass.volume_db = -9.0 if _song_time_ms >= 4000 else -80.0
+	_music_players.synth.volume_db = -11.0 if _song_time_ms >= 6500 else -80.0
+	_music_players.lead.volume_db = -9.0 if _song_time_ms >= 9000 else -80.0
 
 
 func _setup_tones() -> void:
