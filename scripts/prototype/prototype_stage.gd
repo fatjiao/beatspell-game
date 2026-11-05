@@ -49,6 +49,16 @@ var _music_started := false
 var _debug_tracks := false
 var _active_instrument := "drums"
 var _character_react_until := 0
+var _paused := false
+var _pause_started_ticks := 0
+var _status_before_pause := ""
+var _feedback_text := ""
+var _feedback_color := Color.WHITE
+var _feedback_until := 0
+var _perfect_count := 0
+var _good_count := 0
+var _miss_count := 0
+var _bad_tap_count := 0
 
 
 func _ready() -> void:
@@ -60,10 +70,16 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _paused:
+		queue_redraw()
+		return
 	if not _music_started:
 		_song_time_ms = Time.get_ticks_msec() - _song_start_ticks
 		if _song_time_ms >= 0:
 			_start_music()
+		else:
+			_status = "COUNT %d" % clampi(int(ceil(float(-_song_time_ms) / 500.0)), 1, 4)
+			_status_color = Color.WHITE
 	else:
 		_song_time_ms = int(maxf(0.0, (
 			_music_players.drums.get_playback_position()
@@ -75,12 +91,7 @@ func _process(_delta: float) -> void:
 		_update_metronome()
 		_consume_expired_events()
 		if _song_time_ms >= int(_chart.duration_ms):
-			_finished = true
-			_status = "REHEARSAL COMPLETE"
-			_status_color = Color("f9f871")
-	else:
-		if _song_time_ms >= int(_chart.duration_ms) + 2500:
-			_start_run()
+			_finish_run()
 	queue_redraw()
 
 
@@ -93,6 +104,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			_debug_tracks = not _debug_tracks
 			get_viewport().set_input_as_handled()
 			queue_redraw()
+			return
+		if event.physical_keycode == KEY_P:
+			_toggle_pause()
+			get_viewport().set_input_as_handled()
+			return
+		if event.physical_keycode == KEY_R:
+			_start_run()
+			get_viewport().set_input_as_handled()
 			return
 	if _finished:
 		return
@@ -113,8 +132,8 @@ func _start_run() -> void:
 	_chart = result.data
 	_events = _chart.events
 	_judge = RhythmJudgeScript.new(_events)
-	_song_start_ticks = Time.get_ticks_msec() + 1000
-	_song_time_ms = -1000
+	_song_start_ticks = Time.get_ticks_msec() + 2000
+	_song_time_ms = -2000
 	_last_beat = -1
 	_combo = 0
 	_score = 0
@@ -123,8 +142,15 @@ func _start_run() -> void:
 	_status_color = Color.WHITE
 	_finished = false
 	_music_started = false
+	_paused = false
+	_feedback_text = ""
+	_perfect_count = 0
+	_good_count = 0
+	_miss_count = 0
+	_bad_tap_count = 0
 	for player in _music_players.values():
 		player.stop()
+		player.stream_paused = false
 
 
 func _play_instrument(instrument: String) -> void:
@@ -140,21 +166,29 @@ func _apply_judgement(grade: String, offset_ms: int) -> void:
 	match grade:
 		"perfect":
 			_combo += 1
+			_perfect_count += 1
 			_score += 100 + (_combo * 5)
 			_heat = mini(100, _heat + 5)
 			_status = "PERFECT  %+d ms" % offset_ms
 			_status_color = Color("2de2e6")
+			_show_feedback("PERFECT", Color("2de2e6"))
 		"good":
 			_combo += 1
+			_good_count += 1
 			_score += 60 + (_combo * 2)
 			_heat = mini(100, _heat + 2)
 			_status = "GOOD  %+d ms" % offset_ms
 			_status_color = Color("f9f871")
+			_show_feedback("GOOD", Color("f9f871"))
 		_:
 			_combo = 0
+			_bad_tap_count += 1
 			_heat = maxi(0, _heat - 4)
-			_status = "MISS"
+			_status = "OFF BEAT"
 			_status_color = Color("ff5c8a")
+			_show_feedback("OFF BEAT", Color("ff5c8a"))
+	if _combo > 0 and _combo % 5 == 0:
+		_show_feedback("%d HIT STREAK" % _combo, Color("ffffff"), 700)
 
 
 func _consume_expired_events() -> void:
@@ -164,9 +198,59 @@ func _consume_expired_events() -> void:
 		if _song_time_ms > chart_event.time_ms + RhythmJudgeScript.GOOD_WINDOW_MS:
 			chart_event.consumed = true
 			_combo = 0
+			_miss_count += 1
 			_heat = maxi(0, _heat - 3)
 			_status = "MISS — KEEP PLAYING"
 			_status_color = Color("ff5c8a")
+			_show_feedback("MISS", Color("ff5c8a"))
+
+
+func _show_feedback(text: String, color: Color, duration_ms: int = 420) -> void:
+	_feedback_text = text
+	_feedback_color = color
+	_feedback_until = Time.get_ticks_msec() + duration_ms
+
+
+func _toggle_pause() -> void:
+	if _finished:
+		return
+	_paused = not _paused
+	if _paused:
+		_pause_started_ticks = Time.get_ticks_msec()
+		_status_before_pause = _status
+		_status = "PAUSED"
+		_status_color = Color.WHITE
+	else:
+		if not _music_started:
+			_song_start_ticks += Time.get_ticks_msec() - _pause_started_ticks
+		_status = _status_before_pause
+	for player in _music_players.values():
+		player.stream_paused = _paused
+	queue_redraw()
+
+
+func _finish_run() -> void:
+	_finished = true
+	_status = "REHEARSAL COMPLETE"
+	_status_color = Color("f9f871")
+	for player in _music_players.values():
+		player.stream_paused = true
+
+
+func _result_accuracy() -> float:
+	var total: int = maxi(1, _events.size())
+	return (float(_perfect_count) + float(_good_count) * 0.7) / float(total)
+
+
+func _result_rank() -> String:
+	var accuracy := _result_accuracy()
+	if accuracy >= 0.95:
+		return "S"
+	if accuracy >= 0.85:
+		return "A"
+	if accuracy >= 0.70:
+		return "B"
+	return "C"
 
 
 func _update_metronome() -> void:
@@ -206,6 +290,8 @@ func _start_music() -> void:
 	_song_start_ticks = Time.get_ticks_msec()
 	_song_time_ms = 0
 	_music_started = true
+	_status = "FOLLOW THE BEAT"
+	_status_color = Color("d8d5ff")
 	for instrument in INSTRUMENTS:
 		_music_players[instrument].play(0.0)
 	_update_music_layers()
@@ -262,6 +348,13 @@ func _draw() -> void:
 		_draw_debug_tracks()
 	else:
 		_draw_stage_hud()
+	_draw_feedback()
+	if _song_time_ms < 0 and not _paused:
+		_draw_count_in()
+	if _paused:
+		_draw_pause_overlay()
+	if _finished:
+		_draw_result_overlay()
 
 
 func _draw_environment_reactions() -> void:
@@ -368,22 +461,28 @@ func _draw_stage_hud() -> void:
 	_draw_compact_note_ribbon(font)
 	draw_rect(Rect2(0, 149, 320, 31), Color(0.04, 0.04, 0.12, 0.88))
 	var now := Time.get_ticks_msec()
+	var next_event = _next_pending_event()
 	for pad_index in INSTRUMENTS.size():
 		var instrument: String = INSTRUMENTS[pad_index]
 		var pad_rect := Rect2(7 + pad_index * 78, 153, 72, 22)
 		var active := int(_pad_flash_until.get(instrument, 0)) > now
+		var upcoming := false
+		if next_event != null:
+			upcoming = next_event.instrument == instrument and next_event.time_ms - _song_time_ms <= 1400
 		var pad_color: Color = COLORS[instrument]
-		pad_color.a = 0.78 if active else 0.18
+		pad_color.a = 0.78 if active else (0.34 if upcoming else 0.18)
 		draw_rect(pad_rect, pad_color)
-		draw_rect(pad_rect, COLORS[instrument], false, 1.0)
+		draw_rect(pad_rect, COLORS[instrument], false, 2.0 if upcoming else 1.0)
 		draw_string(font, Vector2(pad_rect.position.x + 6, 167), "%s  %s" % [KEY_LABELS[instrument], DISPLAY_NAMES[instrument]], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color.WHITE)
-	draw_string(font, Vector2(7, 179), "TAB TRACKS", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
-	draw_string(font, Vector2(268, 179), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
+	draw_string(font, Vector2(7, 178), "TAB TRACKS  P PAUSE  R RETRY", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
+	draw_string(font, Vector2(268, 178), "C CAL %+d" % _audio_offset_ms, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("7d789f"))
 
 
 func _draw_compact_note_ribbon(font: Font) -> void:
 	draw_rect(Rect2(0, 123, 320, 26), Color(0.03, 0.03, 0.10, 0.72))
 	var hit_x := 70.0
+	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 90.0)
+	draw_circle(Vector2(hit_x, 136), 10.0 + pulse * 2.0, Color(1, 1, 1, 0.04 + pulse * 0.04))
 	draw_line(Vector2(hit_x, 126), Vector2(hit_x, 146), Color.WHITE, 1.0)
 	draw_string(font, Vector2(7, 139), "PLAY", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("d8d5ff"))
 	for chart_event in _events:
@@ -397,6 +496,56 @@ func _draw_compact_note_ribbon(font: Font) -> void:
 		draw_circle(Vector2(event_x, 136), 7.0, Color(0.03, 0.03, 0.10, 0.94))
 		draw_arc(Vector2(event_x, 136), 7.0, 0, TAU, 20, event_color, 1.0)
 		draw_string(font, Vector2(event_x - 3, 139), KEY_LABELS[chart_event.instrument], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, event_color)
+
+
+func _next_pending_event():
+	for chart_event in _events:
+		if not chart_event.consumed:
+			return chart_event
+	return null
+
+
+func _draw_feedback() -> void:
+	if _feedback_text.is_empty() or Time.get_ticks_msec() >= _feedback_until:
+		return
+	var font := ThemeDB.fallback_font
+	var remaining := float(_feedback_until - Time.get_ticks_msec()) / 420.0
+	var pop_y := 52.0 - minf(1.0, remaining) * 3.0
+	var shadow := Color(0.02, 0.02, 0.08, 0.85)
+	draw_string(font, Vector2(190, pop_y + 1), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 11, shadow)
+	draw_string(font, Vector2(189, pop_y), _feedback_text, HORIZONTAL_ALIGNMENT_CENTER, 108, 11, _feedback_color)
+	var border_color := _feedback_color
+	border_color.a = clampf(remaining * 0.25, 0.0, 0.25)
+	draw_rect(Rect2(2, 27, 316, 120), border_color, false, 2.0)
+
+
+func _draw_count_in() -> void:
+	var font := ThemeDB.fallback_font
+	var count := clampi(int(ceil(float(-_song_time_ms) / 500.0)), 1, 4)
+	draw_circle(Vector2(160, 78), 21.0, Color(0.03, 0.03, 0.10, 0.82))
+	draw_arc(Vector2(160, 78), 21.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - fmod(float(-_song_time_ms), 500.0) / 500.0), 28, Color("2de2e6"), 2.0)
+	draw_string(font, Vector2(146, 86), str(count), HORIZONTAL_ALIGNMENT_CENTER, 28, 22, Color.WHITE)
+
+
+func _draw_pause_overlay() -> void:
+	var font := ThemeDB.fallback_font
+	draw_rect(Rect2(0, 25, 320, 124), Color(0.02, 0.02, 0.08, 0.76))
+	draw_string(font, Vector2(95, 77), "PAUSED", HORIZONTAL_ALIGNMENT_CENTER, 130, 18, Color.WHITE)
+	draw_string(font, Vector2(95, 96), "P  RESUME     R  RESTART", HORIZONTAL_ALIGNMENT_CENTER, 130, 7, Color("d8d5ff"))
+
+
+func _draw_result_overlay() -> void:
+	var font := ThemeDB.fallback_font
+	draw_rect(Rect2(39, 31, 242, 112), Color(0.03, 0.03, 0.10, 0.95))
+	draw_rect(Rect2(39, 31, 242, 112), Color("2de2e6"), false, 1.0)
+	draw_string(font, Vector2(58, 48), "REHEARSAL COMPLETE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("d8d5ff"))
+	var rank_color := Color("f9f871") if _result_rank() in ["S", "A"] else Color("2de2e6")
+	draw_string(font, Vector2(57, 105), _result_rank(), HORIZONTAL_ALIGNMENT_CENTER, 50, 44, rank_color)
+	draw_string(font, Vector2(126, 68), "SCORE   %06d" % _score, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color.WHITE)
+	draw_string(font, Vector2(126, 83), "ACCURACY  %3d%%" % int(round(_result_accuracy() * 100.0)), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("d8d5ff"))
+	draw_string(font, Vector2(126, 98), "PERFECT %02d   GOOD %02d" % [_perfect_count, _good_count], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("d8d5ff"))
+	draw_string(font, Vector2(126, 111), "MISS %02d   EXTRA %02d" % [_miss_count, _bad_tap_count], HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("d8d5ff"))
+	draw_string(font, Vector2(93, 132), "R  PLAY AGAIN", HORIZONTAL_ALIGNMENT_CENTER, 134, 8, Color("f9f871"))
 
 
 func _draw_debug_tracks() -> void:
