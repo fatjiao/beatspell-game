@@ -40,9 +40,9 @@
 - Modify: `scripts/beatspell/beatspell_battle.gd`
 - Modify: `tests/capture_beatspell_preview.gd`
 
-1. Show an idle beat pulse before the first input.
-2. Start the four-position ring at the moment of the first input.
-3. Advance clockwise through the four relative beats.
+1. Keep the outer four-position ring locked to the global song clock.
+2. Store each input's absolute ring position separately from its relative spell slot.
+3. Never restart the outer cursor when a phrase begins or resolves.
 4. Capture active rolling and Boss-warning states for visual review.
 
 ### Task 4: Document and verify

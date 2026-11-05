@@ -9,8 +9,10 @@ func run() -> Array[String]:
 	var first: Dictionary = phrase.register_input(2510, "charge", 500.0)
 	_expect(failures, first.status == "accepted", "arbitrary beat can start a phrase")
 	_expect(failures, phrase.anchor_beat == 5 and first.slot == 0, "first input becomes relative slot zero")
+	_expect(failures, phrase.inputs[0].ring_slot == 1, "first input keeps its absolute ring position")
 	var second: Dictionary = phrase.register_input(2990, "cast", 500.0)
 	_expect(failures, second.status == "accepted" and second.slot == 1, "next global beat becomes relative slot one")
+	_expect(failures, phrase.inputs[1].ring_slot == 2, "later input advances from the global ring position")
 	_expect(failures, not phrase.is_due(4499, 500.0), "phrase remains active before four beats elapse")
 	_expect(failures, phrase.is_due(4500, 500.0), "phrase expires four beats after its anchor")
 

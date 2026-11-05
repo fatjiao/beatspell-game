@@ -529,29 +529,26 @@ func _draw_beat_ring() -> void:
 	var center := Vector2(160, 82)
 	var beat_phase := 0.0
 	var slot := -1
-	var phrase_progress := 0.0
+	var cycle_progress := 0.0
 	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
 	if _song_time_ms >= 0:
-		beat_phase = fmod(float(_song_time_ms), BEAT_MS) / BEAT_MS
-		if _phrase.is_active():
-			slot = _phrase.current_slot(adjusted_time, BEAT_MS)
-			phrase_progress = _phrase.progress(adjusted_time, BEAT_MS)
+		beat_phase = fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
+		cycle_progress = fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
+		slot = int(floor(cycle_progress * 4.0))
 	var radius := 22.0 + (1.0 - beat_phase) * 4.0
 	draw_circle(center, radius, Color(0.06, 0.05, 0.14, 0.92))
-	if _phrase.is_active():
-		draw_arc(center, radius, -PI / 2.0, -PI / 2.0 + TAU * phrase_progress, 32, Color("8d7dff"), 2.0)
-		var head_angle := -PI / 2.0 + TAU * phrase_progress
-		draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.2, Color("ffffff"))
-	else:
-		draw_arc(center, radius, 0, TAU, 32, Color(0.55, 0.49, 1.0, 0.30), 1.0)
-		draw_circle(center, 3.0 + (1.0 - beat_phase) * 2.0, Color(0.55, 0.49, 1.0, 0.65))
+	draw_arc(center, radius, 0, TAU, 40, Color(0.55, 0.49, 1.0, 0.34), 1.0)
+	var beat_start_angle := -PI / 2.0 + float(slot) * TAU / 4.0
+	var head_angle := -PI / 2.0 + TAU * cycle_progress
+	draw_arc(center, radius, beat_start_angle, head_angle, 10, Color("8d7dff"), 2.0)
+	draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.4, Color("ffffff"))
 	for marker_index in 4:
 		var angle := -PI / 2.0 + float(marker_index) * TAU / 4.0
 		var marker_position := center + Vector2(cos(angle), sin(angle)) * 16.0
 		var marker_color := Color("dad7ff") if marker_index == slot else Color("514a72")
 		draw_circle(marker_position, 2.0 if marker_index == slot else 1.5, marker_color)
 	for entry in _phrase.inputs:
-		var angle := -PI / 2.0 + float(entry.slot) * TAU / 4.0
+		var angle := -PI / 2.0 + float(entry.ring_slot) * TAU / 4.0
 		var input_position := center + Vector2(cos(angle), sin(angle)) * 10.0
 		var color := Color("ffc45e") if entry.action == "charge" else Color("45e6ff")
 		draw_circle(input_position, 3.0, color)

@@ -30,7 +30,13 @@ func register_input(song_time_ms: int, action: String, beat_ms: float = 500.0) -
 			broken = true
 			return {"status": "duplicate", "slot": slot, "offset_ms": offset_ms, "grade": "miss"}
 	var grade := "perfect" if absi(offset_ms) <= PERFECT_WINDOW_MS else "good"
-	inputs.append({"slot": slot, "action": action, "grade": grade, "offset_ms": offset_ms})
+	inputs.append({
+		"slot": slot,
+		"ring_slot": posmod(global_beat, WINDOW_BEATS),
+		"action": action,
+		"grade": grade,
+		"offset_ms": offset_ms,
+	})
 	inputs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.slot < b.slot)
 	return {"status": "accepted", "slot": slot, "offset_ms": offset_ms, "grade": grade}
 
