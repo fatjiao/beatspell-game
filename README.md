@@ -4,7 +4,9 @@
 
 ## 运行
 
-双击 `run-prototype.ps1`，或在 PowerShell 中执行：
+直接双击 `启动游戏.cmd`。这个启动器不依赖 PowerShell 执行策略；如果启动失败，窗口会保留并显示错误。
+
+也可以在 PowerShell 中执行：
 
 ```powershell
 & '.tools\godot\Godot_v4.7.2-stable_win64.exe' --path .
@@ -26,4 +28,3 @@
 ```
 
 设计与实施计划位于 `docs/plans/`。
-
