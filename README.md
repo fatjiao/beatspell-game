@@ -31,7 +31,9 @@
 .\build-playtest.ps1
 ```
 
-脚本会先运行全部测试，再生成 `build/BeatspellPlaytest-v0.1.0.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+脚本会先运行全部测试，再生成 `build/BeatspellPlaytest-v0.1.1.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+
+当前美术主题为月夜观星台，包含原创绘制风格的中性施法者、黄铜守卫和遗迹背景；HUD 使用旧金、象牙白与青色术法配色。素材与生成提示词见 [美术来源](assets/art/beatspell/README.md)。
 
 ## 操作
 

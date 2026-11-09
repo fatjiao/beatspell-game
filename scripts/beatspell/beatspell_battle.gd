@@ -9,6 +9,10 @@ const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_
 const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
+const Art = preload("res://scripts/beatspell/art_direction.gd")
+const ARENA_ART = preload("res://assets/art/beatspell/observatory.png")
+const CASTER_ART = preload("res://assets/art/beatspell/caster.png")
+const BOSS_ART = preload("res://assets/art/beatspell/warden.png")
 
 const BPM := TimingProfileScript.DEFAULT_BPM
 const BEAT_MS := TimingProfileScript.DEFAULT_BEAT_MS
@@ -82,6 +86,7 @@ func _ready() -> void:
 	_timing.input_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_show_title()
 	queue_redraw()
 
@@ -508,74 +513,59 @@ func _draw() -> void:
 
 
 func _draw_arena() -> void:
-	var background := Color("09091a") if _active_phase == 1 else Color("10091a") if _active_phase == 2 else Color("170817")
-	draw_rect(Rect2(Vector2.ZERO, size), background)
-	for ring_index in range(5, 0, -1):
-		var radius := 24.0 + float(ring_index) * 24.0
-		var color := Color(0.17, 0.10, 0.32, 0.10 + float(5 - ring_index) * 0.015)
-		draw_circle(Vector2(160, 88), radius, color)
-	for line_x in range(0, 321, 20):
-		draw_line(Vector2(160, 100), Vector2(line_x, 142), Color(0.25, 0.18, 0.42, 0.12), 1.0)
-	draw_rect(Rect2(0, 124, 320, 56), Color(0.025, 0.02, 0.075, 0.88))
-	draw_line(Vector2(0, 124), Vector2(320, 124), Color(0.50, 0.32, 0.76, 0.28), 1.0)
-	var pulse := 0.0
-	if _song_time_ms >= 0:
-		pulse = 1.0 - fmod(float(_song_time_ms), BEAT_MS) / BEAT_MS
-	for particle_index in 18:
-		var x := fmod(float(particle_index * 53 + maxi(0, _song_time_ms) / 19), 340.0) - 10.0
-		var y := 30.0 + fmod(float(particle_index * 37), 88.0)
-		var color := Color("45e6ff") if particle_index % 2 == 0 else Color("ff5fba")
-		color.a = 0.08 + pulse * 0.05
-		draw_rect(Rect2(x, y, 1, 1), color)
-
+	draw_texture_rect(ARENA_ART, Rect2(-5, -5, 330, 190), false)
+	draw_rect(Rect2(0, 0, 320, 180), Color(0.015, 0.035, 0.045, 0.28))
+	if _active_phase > 1:
+		draw_rect(Rect2(0, 0, 320, 137), Color(0.25, 0.07, 0.015, 0.08 * float(_active_phase - 1)))
+	draw_rect(Rect2(0, 0, 320, 27), Color(0.015, 0.035, 0.04, 0.89))
+	draw_line(Vector2(12, 26), Vector2(308, 26), Color(Art.GOLD, 0.30), 0.5)
+	draw_rect(Rect2(0, 137, 320, 43), Color(0.02, 0.045, 0.05, 0.95))
+	draw_line(Vector2(12, 137), Vector2(308, 137), Color(Art.GOLD, 0.4), 0.5)
+	for particle_index in 12:
+		var clock := float(maxi(0, _song_time_ms))
+		var point := Vector2(fmod(float(particle_index * 53) + clock / 130.0, 320.0), 35.0 + fmod(float(particle_index * 29) - clock / 270.0, 95.0))
+		draw_circle(point, 0.35, Color(Art.GOLD, 0.28))
 
 func _draw_health() -> void:
 	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(10, 13), "CASTER", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color("dad7ff"))
-	draw_rect(Rect2(10, 17, 92, 5), Color("211c38"))
-	draw_rect(Rect2(11, 18, 90.0 * float(_battle.player_hp) / float(_battle.MAX_PLAYER_HP), 3), Color("69f0a5"))
-	draw_string(font, Vector2(218, 13), "PULSE BEAST", HORIZONTAL_ALIGNMENT_RIGHT, 92, 7, Color("dad7ff"))
-	draw_rect(Rect2(218, 17, 92, 5), Color("211c38"))
-	draw_rect(Rect2(219, 18, 90.0 * float(_battle.boss_hp) / float(_battle.MAX_BOSS_HP), 3), Color("ff668e"))
-	if _battle.shield_active:
-		draw_string(font, Vector2(109, 20), "AEGIS READY", HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Color("45e6ff"))
-	else:
-		var phase_color := Color("8d7dff") if _active_phase == 1 else Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
-		draw_string(font, Vector2(109, 13), "PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], HORIZONTAL_ALIGNMENT_CENTER, 102, 6, phase_color)
-
+	draw_string(font, Vector2(16, 10), "THE CASTER", HORIZONTAL_ALIGNMENT_LEFT, 90, 5, Art.IVORY)
+	draw_string(font, Vector2(214, 10), "RESONANT WARDEN", HORIZONTAL_ALIGNMENT_RIGHT, 90, 5, Art.IVORY)
+	for side in 2:
+		var x := 16.0 if side == 0 else 214.0
+		var fraction := float(_battle.player_hp) / float(_battle.MAX_PLAYER_HP) if side == 0 else float(_battle.boss_hp) / float(_battle.MAX_BOSS_HP)
+		var color := Art.TEAL if side == 0 else Art.EMBER
+		draw_rect(Rect2(x, 14, 90, 3), Color("263739"))
+		draw_rect(Rect2(x, 14, 90.0 * fraction, 3), color)
+		draw_line(Vector2(x, 19), Vector2(x + 90, 19), Color(Art.GOLD, 0.35), 0.5)
+		for tick in 6:
+			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
+	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
+	draw_string(font, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
+	draw_circle(Vector2(160, 19), 1.1, Art.GOLD)
 
 func _draw_player() -> void:
 	var now := Time.get_ticks_msec()
-	var center := Vector2(61, 87)
-	if now < _action_flash_until:
-		center.y -= 2.0
-	if now < _boss_attack_until and not _battle.shield_active:
-		center.x += -2.0 if now % 2 == 0 else 2.0
-	var aura := Color("ffc45e") if _last_action == "charge" else Color("45e6ff")
-	if now < _action_flash_until:
-		aura.a = 0.18
-		draw_circle(center, 27.0, aura)
+	var breath := sin(float(now) / 550.0)
+	var lift := -2.0 if now < _action_flash_until else breath * 0.7
+	draw_ellipse_shadow(Vector2(58, 126), Vector2(24, 3))
+	var tint := Color(1.3, 1.15, 1.0) if now < _action_flash_until else Color.WHITE
+	draw_texture_rect(CASTER_ART, Rect2(15, 36 + lift, 88, 96), false, tint)
 	if _battle.shield_active or now < _shield_flash_until:
-		draw_arc(center, 29.0, -2.2, 2.2, 32, Color("45e6ff"), 2.0)
-		draw_arc(center, 25.0, -2.2, 2.2, 32, Color(0.27, 0.90, 1.0, 0.25), 1.0)
-		for rune_index in 3:
-			var rune_angle := float(now) / 340.0 + float(rune_index) * TAU / 3.0
-			var rune_position := center + Vector2(cos(rune_angle), sin(rune_angle)) * 27.0
-			draw_circle(rune_position, 2.0, Color("b9f7ff"))
-	draw_circle(center + Vector2(0, -13), 9.0, Color("17152c"))
-	draw_colored_polygon(PackedVector2Array([
-		center + Vector2(-15, 27), center + Vector2(-10, -6), center + Vector2(0, -18),
-		center + Vector2(10, -6), center + Vector2(15, 27),
-	]), Color("29234b"))
-	draw_arc(center + Vector2(0, -13), 9.0, 0, TAU, 24, Color("8d7dff"), 1.0)
-	draw_circle(center + Vector2(-3, -13), 1.5, Color("45e6ff"))
-	draw_circle(center + Vector2(3, -13), 1.5, Color("ff5fba"))
-	draw_line(center + Vector2(-9, 3), center + Vector2(-20, 13), Color("8d7dff"), 3.0)
-	draw_line(center + Vector2(9, 3), center + Vector2(20, 13), Color("8d7dff"), 3.0)
+		draw_arc(Vector2(60, 86), 32, -1.45, 1.45, 48, Color(Art.TEAL, 0.85), 1.0, true)
+		draw_arc(Vector2(60, 86), 34, -1.3, 1.3, 48, Color(Art.TEAL, 0.2), 0.5, true)
+		for rune in 3:
+			var angle := -0.9 + float(rune) * 0.9
+			var point := Vector2(60, 86) + Vector2(cos(angle), sin(angle)) * 32
+			draw_circle(point, 1.2, Art.IVORY)
 	if now < _action_flash_until:
-		var hand_x := -21.0 if _last_action == "charge" else 21.0
-		draw_circle(center + Vector2(hand_x, 13), 5.0, Color(aura, 0.72))
+		draw_circle(Vector2(83, 80), 5, Color(Art.TEAL, 0.18))
 
+func draw_ellipse_shadow(center: Vector2, extent: Vector2) -> void:
+	var points := PackedVector2Array()
+	for index in 32:
+		var angle := float(index) * TAU / 32.0
+		points.append(center + Vector2(cos(angle) * extent.x, sin(angle) * extent.y))
+	draw_colored_polygon(points, Color(0.005, 0.015, 0.02, 0.50))
 
 func _draw_boss() -> void:
 	var now := Time.get_ticks_msec()
@@ -592,18 +582,10 @@ func _draw_boss() -> void:
 		warning_aura.a = 0.06 + attack_progress * 0.12
 		draw_circle(center, 39.0 + attack_progress * 8.0, warning_aura)
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, warning_color, 2.0)
-	var phase_colors := [Color("4a215d"), Color("692851"), Color("7d203f")]
-	var body_color: Color = phase_colors[_active_phase - 1] if now >= _boss_hit_until else Color("ff6b5e")
-	draw_colored_polygon(PackedVector2Array([
-		center + Vector2(-24, -8), center + Vector2(-13, -27), center + Vector2(0, -18),
-		center + Vector2(14, -29), center + Vector2(25, -7), center + Vector2(19, 20),
-		center + Vector2(0, 29), center + Vector2(-20, 18),
-	]), body_color)
-	draw_arc(center, 25.0, 0, TAU, 32, Color("ff5fba"), 2.0)
-	draw_circle(center + Vector2(0, -5), 8.0, Color("100b22"))
-	draw_circle(center + Vector2(0, -5), 4.0, Color("ff668e"))
-	draw_line(center + Vector2(0, 18), center + Vector2(0, 34), Color("ffb65e"), 2.0)
-	draw_circle(center + Vector2(0, 36), 4.0, Color("ffb65e"))
+	draw_ellipse_shadow(Vector2(260, 128), Vector2(27, 3))
+	var tint := Color(1.5, 1.2, 1.0) if now < _boss_hit_until else Color.WHITE
+	draw_texture_rect(BOSS_ART, Rect2(center.x - 49, center.y - 47, 98, 93), false, tint)
+
 	if warning:
 		var warning_color := _attack_pattern_color()
 		var adjusted_time := _adjusted_song_time()
@@ -613,7 +595,7 @@ func _draw_boss() -> void:
 		var current_step := clampi(int(floor(float(time_in_bar) / float(ATTACK_SUBDIVISION_MS))), 0, 7)
 		var subdivision_phase := fmod(float(time_in_bar), float(ATTACK_SUBDIVISION_MS)) / float(ATTACK_SUBDIVISION_MS)
 		for subdivision in 8:
-			var pip_position := Vector2(224 + subdivision * 10, 117)
+			var pip_position := Vector2(224 + subdivision * 10, 130)
 			var cue_ordinal := cue_steps.find(subdivision)
 			if cue_ordinal < 0:
 				draw_circle(pip_position, 1.15, Color(0.30, 0.16, 0.27, 0.62))
@@ -631,7 +613,7 @@ func _draw_boss() -> void:
 			])
 			draw_colored_polygon(pip, pip_color)
 		var playhead_x := 224.0 + float(current_step) * 10.0
-		draw_line(Vector2(playhead_x - 3.0, 123), Vector2(playhead_x + 3.0, 123), warning_color.lightened(0.24), 1.0)
+		draw_line(Vector2(playhead_x - 3.0, 135), Vector2(playhead_x + 3.0, 135), warning_color.lightened(0.24), 1.0)
 
 
 func _attack_pattern_color() -> Color:
@@ -686,12 +668,18 @@ func _draw_beat_ring() -> void:
 		beat_phase = fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
 		cycle_progress = fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
 		current_ring_tick = int(floor(cycle_progress * 4.0))
-	var radius := 22.0 + (1.0 - beat_phase) * 4.0
-	draw_circle(center, radius, Color(0.06, 0.05, 0.14, 0.92))
-	draw_arc(center, radius, 0, TAU, 40, Color(0.55, 0.49, 1.0, 0.34), 1.0)
+	var radius := 25.0 + (1.0 - beat_phase) * 1.3
+	draw_arc(center, 30, 0, TAU, 80, Color(Art.GOLD, 0.25), 0.5, true)
+	for tick in 48:
+		var angle := float(tick) * TAU / 48.0
+		var outer := center + Vector2(cos(angle), sin(angle)) * 30.0
+		var inner := center + Vector2(cos(angle), sin(angle)) * (28.0 if tick % 12 == 0 else 29.0)
+		draw_line(inner, outer, Color(Art.GOLD, 0.50), 0.5, true)
+	draw_circle(center, radius, Color(0.02, 0.05, 0.06, 0.86))
+	draw_arc(center, radius, 0, TAU, 40, Color(Art.GOLD, 0.55), 0.5)
 	var beat_start_angle := -PI / 2.0 + float(current_ring_tick) * TAU / 4.0
 	var head_angle := -PI / 2.0 + TAU * cycle_progress
-	draw_arc(center, radius, beat_start_angle, head_angle, 10, Color("8d7dff"), 2.0)
+	draw_arc(center, radius, beat_start_angle, head_angle, 10, Art.GOLD, 1.0)
 	draw_circle(center + Vector2(cos(head_angle), sin(head_angle)) * radius, 2.4, Color("ffffff"))
 	for marker_index in 4:
 		var angle := -PI / 2.0 + float(marker_index) * TAU / 4.0
@@ -736,39 +724,27 @@ func _draw_beat_ring() -> void:
 
 func _draw_spell_cards() -> void:
 	var font := ThemeDB.fallback_font
-	var cards := ["fireball", "shield", "heal"]
-	for card_index in cards.size():
-		var skill: String = cards[card_index]
-		var card_rect := Rect2(5 + card_index * 104, 130, 102, 32)
+	var skills := ["fireball", "shield", "heal"]
+	var colors := [Art.EMBER, Art.TEAL, Color("b3c68f")]
+	for index in 3:
+		var skill: String = skills[index]
+		var rect := Rect2(15 + index * 98, 141, 94, 27)
 		var active := _last_skill == skill and Time.get_ticks_msec() < _skill_flash_until
 		var teaching := _director.tutorial_skill(_bar_index) == skill and not _finished
-		var color: Color = SKILL_COLORS[skill]
-		draw_rect(card_rect, Color(0.05, 0.04, 0.12, 0.94))
-		if teaching:
-			draw_rect(card_rect.grow(2.0), Color(color, 0.13), true)
-		draw_rect(card_rect, Color(color, 0.85 if active or teaching else 0.30), false, 2.0 if teaching else 1.0)
-		draw_string(font, card_rect.position + Vector2(5, 11), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 48, 7, color)
+		var color: Color = colors[index]
+		Art.panel(self, rect, color, active or teaching)
+		Art.sigil(self, rect.position + Vector2(12, 13), skill, 7, color)
+		draw_string(font, rect.position + Vector2(24, 10), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 65, 6, Art.IVORY)
 		var pattern: Array = DISPLAY_PATTERNS[skill]
-		var pattern_end_x := 57.0 + float(pattern[-1].tick) * 14.0
-		draw_line(card_rect.position + Vector2(57, 9), card_rect.position + Vector2(pattern_end_x, 9), Color("514a72"), 1.0)
-		for pattern_tick in int(pattern[-1].tick) + 1:
-			draw_circle(card_rect.position + Vector2(57 + float(pattern_tick) * 14.0, 9), 1.25, Color("514a72"))
-		for pattern_event in pattern:
-			var symbol_position := card_rect.position + Vector2(57 + float(pattern_event.tick) * 14.0, 9)
-			if pattern_event.action == "step":
-				draw_circle(symbol_position, 3.0, Color("ffc45e"))
+		for tick in 3:
+			draw_circle(rect.position + Vector2(27 + tick * 12, 19), 0.7, Color(Art.GOLD, 0.35))
+		for entry in pattern:
+			var point := rect.position + Vector2(27 + float(entry.tick) * 12, 19)
+			if entry.action == "step":
+				draw_circle(point, 1.7, Art.GOLD)
 			else:
-				var diamond := PackedVector2Array([
-					symbol_position + Vector2(0, -4), symbol_position + Vector2(4, 0),
-					symbol_position + Vector2(0, 4), symbol_position + Vector2(-4, 0),
-				])
-				draw_colored_polygon(diamond, Color("45e6ff"))
-		draw_string(font, card_rect.position + Vector2(5, 25), SKILL_EFFECTS[skill], HORIZONTAL_ALIGNMENT_LEFT, 48, 5, Color(color, 0.74))
-		draw_string(font, card_rect.position + Vector2(55, 25), "D/F  ·  J/K", HORIZONTAL_ALIGNMENT_LEFT, 43, 5, Color("aaa6cc"))
-	var tutorial_skill: String = _director.tutorial_skill(_bar_index)
-	if not tutorial_skill.is_empty() and not _finished:
-		draw_string(font, Vector2(111, 119), "PRACTICE · %s" % SKILL_NAMES[tutorial_skill], HORIZONTAL_ALIGNMENT_CENTER, 98, 6, SKILL_COLORS[tutorial_skill])
-
+				draw_colored_polygon(PackedVector2Array([point + Vector2(0, -2.4), point + Vector2(2.4, 0), point + Vector2(0, 2.4), point + Vector2(-2.4, 0)]), Art.TEAL)
+		draw_string(font, rect.position + Vector2(64, 20), SKILL_EFFECTS[skill], HORIZONTAL_ALIGNMENT_RIGHT, 25, 4, color)
 
 func _draw_feedback() -> void:
 	if _finished:
@@ -777,12 +753,11 @@ func _draw_feedback() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var text := _feedback
-	draw_string(font, Vector2(98, 36), text, HORIZONTAL_ALIGNMENT_CENTER, 124, 10, Color(0.02, 0.01, 0.06, 0.85))
-	draw_string(font, Vector2(97, 35), text, HORIZONTAL_ALIGNMENT_CENTER, 124, 10, _feedback_color)
+	draw_rect(Rect2(107, 29, 106, 12), Color(0.02, 0.045, 0.05, 0.8))
+	draw_string(font, Vector2(109, 37), text, HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Art.IVORY)
 
 
 func _draw_footer() -> void:
 	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(0, 166, 320, 14), Color(0.02, 0.015, 0.055, 0.96))
-	draw_string(font, Vector2(8, 176), "D/F STEP   J/K FINISH", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
-	draw_string(font, Vector2(203, 176), "P PAUSE  R RETRY  C CAL", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("777394"))
+	draw_string(font, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
+	draw_string(font, Vector2(192, 177), "P  PAUSE   R  RETRY   C  AUDIO", HORIZONTAL_ALIGNMENT_RIGHT, 112, 4, Art.MUTED)

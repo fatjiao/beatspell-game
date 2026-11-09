@@ -2,6 +2,8 @@
 
 这份文档是换电脑或开启新 AI 开发任务时的总入口。当前有效方向是 **Beatspell 节奏施法 Boss 战**；`scenes/prototype/` 下的《一个人的乐队》属于早期原型，不是当前主线。
 
+当前版本为 `v0.1.1-internal`，已接入月夜观星台、中性施法者和黄铜守卫三张 AI 美术素材。完整提示词保存在 `assets/art/beatspell/README.md`；视觉色板与绘制组件位于 `scripts/beatspell/art_direction.gd`。重新构建会生成 `build/BeatspellPlaytest-v0.1.1.zip`。
+
 ## 1. 项目目标与约束
 
 - 做出一款原创、可独立发布的轻量节奏游戏，最终目标平台为 Windows / Steam。
