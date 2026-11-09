@@ -5,6 +5,7 @@ const SUBDIVISION_MS := 250
 const BAR_MS := 2000
 const STANDARD_CUE_STEPS := [0, 2, 4, 6]
 const SYNCOPATED_CUE_STEPS := [0, 3, 4, 7]
+const RUSH_CUE_STEPS := [0, 4, 6, 7]
 
 
 func tutorial_skill(bar_index: int) -> String:
@@ -54,11 +55,19 @@ func attack_pattern(bar_index: int, phase: int) -> String:
 	if phase == 2:
 		var attack_ordinal := int(floor(float(bar_index + 1) / 3.0))
 		return "syncopated" if attack_ordinal % 2 == 1 else "standard"
-	return "syncopated"
+	var attack_ordinal := int(floor(float(bar_index + 1) / 2.0))
+	return "rush" if attack_ordinal % 2 == 0 else "syncopated"
 
 
 func attack_cue_steps(bar_index: int, phase: int) -> Array:
-	var steps: Array = SYNCOPATED_CUE_STEPS if attack_pattern(bar_index, phase) == "syncopated" else STANDARD_CUE_STEPS
+	var steps: Array
+	match attack_pattern(bar_index, phase):
+		"syncopated":
+			steps = SYNCOPATED_CUE_STEPS
+		"rush":
+			steps = RUSH_CUE_STEPS
+		_:
+			steps = STANDARD_CUE_STEPS
 	return steps.duplicate()
 
 

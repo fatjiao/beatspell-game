@@ -9,6 +9,12 @@ func _capture() -> void:
 	root.size = Vector2i(1280, 720)
 	var stage = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
 	root.add_child(stage)
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-title-preview.png"):
+		quit(1)
+		return
+	stage.call("_start_run")
 	await create_timer(2.4).timeout
 	stage.set_process(false)
 	stage.set("_song_time_ms", 1550)
@@ -68,6 +74,35 @@ func _capture() -> void:
 		quit(1)
 		return
 
+	stage.set("_song_time_ms", 23_750)
+	stage.set("_bar_index", 11)
+	stage.set("_active_phase", 3)
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-rush-warning-preview.png"):
+		quit(1)
+		return
+
+	stage.get_node("BattleOverlay").flash_phase(3, "OVERDRIVE", Color("ff4f70"), 2000)
+	stage.queue_redraw()
+	await create_timer(0.35).timeout
+	await process_frame
+	if not _save_view("res://build/beatspell-phase-preview.png"):
+		quit(1)
+		return
+
+	stage.set("_paused", true)
+	stage.get_node("BattleOverlay").show_pause()
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-pause-preview.png"):
+		quit(1)
+		return
+	stage.set("_paused", false)
+	stage.get_node("BattleOverlay").hide_primary()
+
 	stage.set("_finished", true)
 	stage.set("_result_text", "BEAST DISPELLED")
 	stage.set("_feedback_color", Color("69f0a5"))
@@ -82,10 +117,23 @@ func _capture() -> void:
 	performance.record_attempt("fireball", "perfect")
 	performance.record_attempt("heal", "good")
 	performance.record_attempt("", "miss")
+	stage.get_node("BattleOverlay").show_result(stage.call("_result_overlay_data"))
 	stage.queue_redraw()
 	await process_frame
 	await process_frame
 	if not _save_view("res://build/beatspell-result-preview.png"):
+		quit(1)
+		return
+
+	stage.set("_result_text", "RITUAL BROKEN")
+	stage.set("_feedback_color", Color("ff668e"))
+	stage.get("_battle").player_hp = 0
+	stage.get("_battle").boss_hp = 17
+	stage.get_node("BattleOverlay").show_result(stage.call("_result_overlay_data"))
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-defeat-preview.png"):
 		quit(1)
 		return
 	stage.queue_free()

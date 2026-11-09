@@ -11,6 +11,15 @@ func run() -> Array[String]:
 		failures.append("battle_cast input action is missing")
 	if not ResourceLoader.exists("res://scenes/beatspell/beatspell_battle.tscn"):
 		failures.append("beatspell battle scene is missing")
+	else:
+		var packed_scene = load("res://scenes/beatspell/beatspell_battle.tscn")
+		var battle_scene = packed_scene.instantiate() if packed_scene != null else null
+		if battle_scene == null:
+			failures.append("beatspell battle scene cannot be instantiated")
+		elif not battle_scene.has_node("BattleOverlay"):
+			failures.append("beatspell battle overlay is missing")
+		if battle_scene != null:
+			battle_scene.free()
 	if ProjectSettings.get_setting("application/run/main_scene") != "res://scenes/beatspell/beatspell_battle.tscn":
 		failures.append("beatspell battle is not the main scene")
 	if not InputMap.has_action("instrument_drums"):

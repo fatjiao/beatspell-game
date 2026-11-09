@@ -32,8 +32,10 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_pattern(11, 2), "standard", "phase two begins with a readable standard attack")
 	_expect_equal(failures, director.attack_pattern(14, 2), "syncopated", "phase two alternates into a syncopated attack")
 	_expect_equal(failures, director.attack_pattern(9, 3), "syncopated", "phase three uses the syncopated attack")
+	_expect_equal(failures, director.attack_pattern(11, 3), "rush", "phase three alternates into a rush attack")
 	_expect_equal(failures, director.attack_cue_steps(8, 1), [0, 2, 4, 6], "standard attack cues occupy quarter-note subdivisions")
 	_expect_equal(failures, director.attack_cue_steps(14, 2), [0, 3, 4, 7], "syncopated attack uses uneven eighth-note spacing")
+	_expect_equal(failures, director.attack_cue_steps(11, 3), [0, 4, 6, 7], "rush attack accelerates through its final cues")
 
 	_expect_equal(failures, director.attack_cue_index(15_999, 7, 1), -1, "safe bar has no warning cue")
 	_expect_equal(failures, director.attack_cue_index(16_000, 8, 1), 0, "attack warning starts on its first beat")
@@ -46,6 +48,11 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_cue_index(28_750, 14, 2), 1, "syncopated second cue lands on subdivision three")
 	_expect_equal(failures, director.attack_cue_index(29_000, 14, 2), 2, "syncopated third cue returns to a whole beat")
 	_expect_equal(failures, director.attack_cue_index(29_750, 14, 2), 3, "syncopated final cue lands just before impact")
+	_expect_equal(failures, director.attack_cue_index(22_000, 11, 3), 0, "rush warning starts immediately")
+	_expect_equal(failures, director.attack_cue_index(22_750, 11, 3), 0, "rush warning preserves its long opening rest")
+	_expect_equal(failures, director.attack_cue_index(23_000, 11, 3), 1, "rush second cue begins the acceleration")
+	_expect_equal(failures, director.attack_cue_index(23_500, 11, 3), 2, "rush third cue lands late in the bar")
+	_expect_equal(failures, director.attack_cue_index(23_750, 11, 3), 3, "rush final cue lands directly before impact")
 	return failures
 
 

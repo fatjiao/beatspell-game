@@ -39,6 +39,8 @@ const DISPLAY_PATTERNS := {
 	],
 }
 
+@onready var _overlay = $BattleOverlay
+
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
 var _attack_cue_audio = AttackCueAudioScript.new()
@@ -49,6 +51,7 @@ var _command = SpellCommandBufferScript.new(_timing)
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
 var _audio_ready := false
+var _waiting_to_start := true
 var _song_start_ticks := 0
 var _song_time_ms := -2000
 var _music_started := false
@@ -71,23 +74,29 @@ var _paused := false
 var _pause_started_ticks := 0
 var _count_click_index := -1
 var _error_text := ""
+var _stage_shake_until := 0
+var _stage_shake_strength := 0.0
 
 
 func _ready() -> void:
 	_timing.input_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
-	_start_run()
+	_show_title()
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
+	if _waiting_to_start:
+		queue_redraw()
+		return
 	if _paused:
 		queue_redraw()
 		return
 	if not _music_started:
 		_song_time_ms = Time.get_ticks_msec() - _song_start_ticks
 		_update_count_in_audio()
+		_overlay.show_count_in(clampi(int(ceil(float(-_song_time_ms) / BEAT_MS)), 1, 4))
 		if _song_time_ms >= 0 and _audio_ready:
 			_start_music()
 	else:
@@ -106,18 +115,32 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed and not event.echo):
+	var is_key_press: bool = event is InputEventKey and event.pressed and not event.echo
+	var is_button_press: bool = event is InputEventJoypadButton and event.pressed
+	if not is_key_press and not is_button_press:
 		return
-	if event.physical_keycode == KEY_R:
+	if is_key_press and event.physical_keycode == KEY_C:
+		get_tree().change_scene_to_file("res://scenes/settings/calibration.tscn")
+		return
+	if is_key_press and event.physical_keycode == KEY_ESCAPE:
+		if _waiting_to_start:
+			get_tree().quit()
+		else:
+			_show_title()
+		get_viewport().set_input_as_handled()
+		return
+	if _waiting_to_start:
+		if event.is_action_pressed("battle_cast") or (is_key_press and event.physical_keycode in [KEY_ENTER, KEY_SPACE]):
+			_start_run()
+			get_viewport().set_input_as_handled()
+		return
+	if is_key_press and event.physical_keycode == KEY_R:
 		_start_run()
 		get_viewport().set_input_as_handled()
 		return
-	if event.physical_keycode == KEY_P:
+	if is_key_press and event.physical_keycode == KEY_P:
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
-		return
-	if event.physical_keycode == KEY_C:
-		get_tree().change_scene_to_file("res://scenes/settings/calibration.tscn")
 		return
 	if _finished or _paused or _song_time_ms < 0 or not _music_started:
 		return
@@ -129,7 +152,28 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func _show_title() -> void:
+	_waiting_to_start = true
+	_finished = false
+	_paused = false
+	_music_started = false
+	_song_time_ms = -2000
+	_bar_index = -1
+	_active_phase = 1
+	_battle = BattleModelScript.new()
+	_command.reset()
+	_performance.reset()
+	_recent_command.clear()
+	_attack_cue_audio.reset()
+	for player in _music_players.values():
+		player.stop()
+		player.stream_paused = false
+	_overlay.show_title()
+	queue_redraw()
+
+
 func _start_run() -> void:
+	_waiting_to_start = false
 	_battle = BattleModelScript.new()
 	_song_start_ticks = Time.get_ticks_msec() + 2000
 	_song_time_ms = -2000
@@ -149,9 +193,12 @@ func _start_run() -> void:
 	_paused = false
 	_count_click_index = -1
 	_attack_cue_audio.reset()
+	_stage_shake_until = 0
+	_stage_shake_strength = 0.0
 	for player in _music_players.values():
 		player.stop()
 		player.stream_paused = false
+	_overlay.show_count_in(4)
 	queue_redraw()
 
 
@@ -162,6 +209,7 @@ func _start_music() -> void:
 	_command.reset()
 	for player in _music_players.values():
 		player.play(0.0)
+	_overlay.hide_primary()
 	_show_feedback("FORM A SPELL", Color("dad7ff"), 900)
 
 
@@ -180,6 +228,8 @@ func _update_bar() -> void:
 	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
 	if next_phase != _active_phase:
 		_active_phase = next_phase
+		var phase_color := Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
+		_overlay.flash_phase(_active_phase, _director.phase_name(_active_phase), phase_color, 1050)
 		_show_feedback("PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], Color("ff9a6b"), 1050)
 
 
@@ -235,6 +285,7 @@ func _cast_skill(skill: String, grade: String) -> void:
 	match skill:
 		"fireball":
 			_boss_hit_until = Time.get_ticks_msec() + 420
+			_trigger_stage_shake(2.8, 170)
 			_show_feedback("%s  -%d" % [SKILL_NAMES[skill], result.amount], SKILL_COLORS[skill], 720)
 		"shield":
 			_shield_flash_until = Time.get_ticks_msec() + 850
@@ -248,9 +299,11 @@ func _resolve_boss_attack() -> void:
 	_boss_attack_until = Time.get_ticks_msec() + 520
 	if result.blocked:
 		_shield_flash_until = Time.get_ticks_msec() + 620
+		_trigger_stage_shake(2.2, 180)
 		_show_feedback("BLOCKED", Color("45e6ff"), 760)
 		_play_sfx("shield_block")
 	else:
+		_trigger_stage_shake(4.5, 280)
 		_show_feedback("BEAST STRIKE  -%d" % result.damage, Color("ff668e"), 820)
 		_play_sfx("boss")
 	if _battle.is_defeat():
@@ -263,6 +316,21 @@ func _is_attack_bar(bar: int) -> bool:
 
 func _adjusted_song_time() -> int:
 	return _timing.adjusted_song_time(_song_time_ms)
+
+
+func _trigger_stage_shake(strength: float, duration_ms: int) -> void:
+	_stage_shake_strength = maxf(_stage_shake_strength, strength)
+	_stage_shake_until = maxi(_stage_shake_until, Time.get_ticks_msec() + duration_ms)
+
+
+func _stage_shake_offset() -> Vector2:
+	var remaining := _stage_shake_until - Time.get_ticks_msec()
+	if remaining <= 0:
+		_stage_shake_strength = 0.0
+		return Vector2.ZERO
+	var fade := clampf(float(remaining) / 280.0, 0.0, 1.0)
+	var clock := float(Time.get_ticks_msec())
+	return Vector2(sin(clock * 0.19), cos(clock * 0.23)) * _stage_shake_strength * fade
 
 
 func _update_attack_cue(adjusted_time_ms: int) -> void:
@@ -288,6 +356,25 @@ func _finish_battle(text: String, victory: bool) -> void:
 	_feedback_color = Color("69f0a5") if victory else Color("ff668e")
 	for player in _music_players.values():
 		player.stream_paused = true
+	_overlay.show_result(_result_overlay_data())
+
+
+func _result_overlay_data() -> Dictionary:
+	return {
+		"title": _result_text,
+		"color": _feedback_color,
+		"rank": _performance.rank(),
+		"successful_casts": _performance.successful_cast_count,
+		"attempts": _performance.attempt_count,
+		"perfect_casts": _performance.perfect_cast_count,
+		"good_casts": _performance.good_cast_count,
+		"failed_casts": _performance.failed_cast_count,
+		"inputs": _performance.input_count,
+		"average_offset_ms": _performance.average_absolute_offset_ms(),
+		"timing_bias": _performance.timing_bias(),
+		"boss_hp": _battle.boss_hp,
+		"boss_max_hp": _battle.MAX_BOSS_HP,
+	}
 
 
 func _toggle_pause() -> void:
@@ -296,8 +383,12 @@ func _toggle_pause() -> void:
 	_paused = not _paused
 	if _paused:
 		_pause_started_ticks = Time.get_ticks_msec()
+		_overlay.show_pause()
 	elif not _music_started:
 		_song_start_ticks += Time.get_ticks_msec() - _pause_started_ticks
+		_overlay.show_count_in(clampi(int(ceil(float(-_song_time_ms) / BEAT_MS)), 1, 4))
+	else:
+		_overlay.hide_primary()
 	for player in _music_players.values():
 		player.stream_paused = _paused
 	queue_redraw()
@@ -398,21 +489,18 @@ func _synthesize_sfx_sample(kind: String, t: float, progress: float) -> float:
 
 
 func _draw() -> void:
+	var shake_offset := _stage_shake_offset()
+	draw_set_transform(shake_offset)
 	_draw_arena()
-	_draw_health()
 	_draw_player()
 	_draw_boss()
 	_draw_spell_effects()
 	_draw_beat_ring()
+	draw_set_transform(Vector2.ZERO)
+	_draw_health()
 	_draw_spell_cards()
 	_draw_feedback()
 	_draw_footer()
-	if _song_time_ms < 0 and not _finished:
-		_draw_count_in()
-	if _paused:
-		_draw_pause()
-	if _finished:
-		_draw_result()
 	if not _error_text.is_empty():
 		var font := ThemeDB.fallback_font
 		draw_rect(Rect2(24, 72, 272, 34), Color(0.06, 0.03, 0.08, 0.95))
@@ -420,7 +508,8 @@ func _draw() -> void:
 
 
 func _draw_arena() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("09091a"))
+	var background := Color("09091a") if _active_phase == 1 else Color("10091a") if _active_phase == 2 else Color("170817")
+	draw_rect(Rect2(Vector2.ZERO, size), background)
 	for ring_index in range(5, 0, -1):
 		var radius := 24.0 + float(ring_index) * 24.0
 		var color := Color(0.17, 0.10, 0.32, 0.10 + float(5 - ring_index) * 0.015)
@@ -496,10 +585,13 @@ func _draw_boss() -> void:
 	if now < _boss_hit_until:
 		center.x += -3.0 if now % 2 == 0 else 3.0
 	if warning:
+		var warning_color := _attack_pattern_color()
 		var adjusted_time := _adjusted_song_time()
 		var attack_progress := fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
-		draw_circle(center, 39.0 + attack_progress * 8.0, Color(1.0, 0.18, 0.35, 0.06 + attack_progress * 0.12))
-		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, Color("ff4f70"), 2.0)
+		var warning_aura := warning_color
+		warning_aura.a = 0.06 + attack_progress * 0.12
+		draw_circle(center, 39.0 + attack_progress * 8.0, warning_aura)
+		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, warning_color, 2.0)
 	var phase_colors := [Color("4a215d"), Color("692851"), Color("7d203f")]
 	var body_color: Color = phase_colors[_active_phase - 1] if now >= _boss_hit_until else Color("ff6b5e")
 	draw_colored_polygon(PackedVector2Array([
@@ -513,6 +605,7 @@ func _draw_boss() -> void:
 	draw_line(center + Vector2(0, 18), center + Vector2(0, 34), Color("ffb65e"), 2.0)
 	draw_circle(center + Vector2(0, 36), 4.0, Color("ffb65e"))
 	if warning:
+		var warning_color := _attack_pattern_color()
 		var adjusted_time := _adjusted_song_time()
 		var cue_index: int = _director.attack_cue_index(adjusted_time, _bar_index, _active_phase)
 		var cue_steps: Array = _director.attack_cue_steps(_bar_index, _active_phase)
@@ -527,7 +620,7 @@ func _draw_boss() -> void:
 				continue
 			var lit: bool = cue_ordinal <= cue_index
 			var is_current_cue: bool = subdivision == current_step and cue_ordinal == cue_index
-			var pip_color := Color("ff668e") if lit else Color("4d2944")
+			var pip_color := warning_color if lit else Color("4d2944")
 			pip_color.a = 0.96 if lit else 0.58
 			var pip_size := 3.0
 			if is_current_cue:
@@ -538,7 +631,16 @@ func _draw_boss() -> void:
 			])
 			draw_colored_polygon(pip, pip_color)
 		var playhead_x := 224.0 + float(current_step) * 10.0
-		draw_line(Vector2(playhead_x - 3.0, 123), Vector2(playhead_x + 3.0, 123), Color("ff9ab0"), 1.0)
+		draw_line(Vector2(playhead_x - 3.0, 123), Vector2(playhead_x + 3.0, 123), warning_color.lightened(0.24), 1.0)
+
+
+func _attack_pattern_color() -> Color:
+	match _director.attack_pattern(_bar_index, _active_phase):
+		"syncopated":
+			return Color("ff7f66")
+		"rush":
+			return Color("ffc45e")
+	return Color("ff668e")
 
 
 func _draw_spell_effects() -> void:
@@ -684,39 +786,3 @@ func _draw_footer() -> void:
 	draw_rect(Rect2(0, 166, 320, 14), Color(0.02, 0.015, 0.055, 0.96))
 	draw_string(font, Vector2(8, 176), "D/F STEP   J/K FINISH", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("aaa6cc"))
 	draw_string(font, Vector2(203, 176), "P PAUSE  R RETRY  C CAL", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("777394"))
-
-
-func _draw_count_in() -> void:
-	var font := ThemeDB.fallback_font
-	var count := clampi(int(ceil(float(-_song_time_ms) / BEAT_MS)), 1, 4)
-	draw_circle(Vector2(160, 82), 30.0, Color(0.03, 0.02, 0.08, 0.94))
-	draw_arc(Vector2(160, 82), 30.0, 0, TAU, 36, Color("8d7dff"), 2.0)
-	draw_string(font, Vector2(143, 93), str(count), HORIZONTAL_ALIGNMENT_CENTER, 34, 28, Color("ffffff"))
-
-
-func _draw_pause() -> void:
-	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(0, 24, 320, 100), Color(0.02, 0.01, 0.06, 0.82))
-	draw_string(font, Vector2(100, 73), "PAUSED", HORIZONTAL_ALIGNMENT_CENTER, 120, 18, Color("ffffff"))
-	draw_string(font, Vector2(100, 91), "P  RESUME", HORIZONTAL_ALIGNMENT_CENTER, 120, 7, Color("dad7ff"))
-
-
-func _draw_result() -> void:
-	var font := ThemeDB.fallback_font
-	var panel := Rect2(32, 31, 256, 96)
-	draw_rect(panel, Color(0.025, 0.02, 0.075, 0.97))
-	draw_rect(panel, _feedback_color, false, 1.0)
-	draw_string(font, Vector2(48, 53), _result_text, HORIZONTAL_ALIGNMENT_CENTER, 224, 14, _feedback_color)
-	draw_string(font, Vector2(48, 72),
-		"CAST %02d/%02d   P%02d G%02d X%02d" % [
-			_performance.successful_cast_count, _performance.attempt_count,
-			_performance.perfect_cast_count, _performance.good_cast_count,
-			_performance.failed_cast_count,
-		], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("dad7ff"))
-	draw_string(font, Vector2(48, 89),
-		"INPUT %02d   AVG %03dMS  %s" % [
-			_performance.input_count, _performance.average_absolute_offset_ms(),
-			_performance.timing_bias(),
-		], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("aaa6cc"))
-	draw_string(font, Vector2(48, 105), "RANK %s   BOSS %02d/%02d" % [_performance.rank(), _battle.boss_hp, _battle.MAX_BOSS_HP], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("8d7dff"))
-	draw_string(font, Vector2(48, 121), "R  BEGIN AGAIN", HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("ffc45e"))
