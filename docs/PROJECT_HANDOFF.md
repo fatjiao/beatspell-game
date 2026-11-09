@@ -2,9 +2,9 @@
 
 这份文档是换电脑或开启新 AI 开发任务时的总入口。当前有效方向是 **Beatspell 节奏施法 Boss 战**；`scenes/prototype/` 下的《一个人的乐队》属于早期原型，不是当前主线。
 
-当前版本为 `v0.3.1-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。当前场景引用 `assets/art/beatspell/pixel/` 的三张像素素材，完整提示词见该目录 README。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.3.1.zip`。
+当前版本为 `v0.3.2-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。背景和标题素材位于 `assets/art/beatspell/pixel/`，战斗使用 `pixel/poses/` 下六张独立姿态帧。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.3.2.zip`。
 
-最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。图像生成服务连接失败，新角色姿态帧未生成；不能把现有程序姿态动画描述为已完成的新精灵帧。
+最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。在线图像工具仍连接失败，用户要求尝试其他办法后，改用 `tools/build_pose_frames.gd` 在原素材上本地编辑手臂、法球、披风与守卫前爪，产出六张实际 PNG；不能把它们描述为在线图像服务的新生成结果。运行方法见 `assets/art/beatspell/pixel/poses/README.md`。
 
 本批加入精准格挡、三格破防、四连击共鸣、H 术式手册和练习中的 T 无伤害防御训练。规则与有效伤害/治疗账本均在 `battle_model.gd`；精准格挡要求场景提供输入与攻击的音乐时间，不使用墙钟。Boss 生命值现为 60，教学九小节固定第一阶段。
 
@@ -40,7 +40,7 @@
 - `build-playtest.ps1` 可生成无需安装 Godot 的便携内部试玩压缩包。
 - 暂停、重开和音频延迟校准。
 - 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
-- 纯逻辑、音效采样和场景冒烟测试；当前 19 个测试组，以及 `tests/test_playtest_flow.gd` 场景流程测试。
+- 纯逻辑、音效采样、动作帧和场景冒烟测试；当前 20 个测试组，以及 `tests/test_playtest_flow.gd` 场景流程测试。
 - 无伤害、无时限的练习模式，三种术式每种两次成功后自由练习。
 - 音乐、音效、震动与全屏设置；暂停后保留动画剩余时间。
 
@@ -129,6 +129,8 @@ git status
 | `scripts/beatspell/performance_tracker.gd` | 输入偏差、施法成功率和结算统计 |
 | `scripts/beatspell/battle_overlay.gd` | 标题、倒计时、阶段提示、暂停和结算覆盖层 |
 | `scripts/beatspell/input_trace_fade.gd` | 完成输入轨迹的淡出规则 |
+| `scripts/beatspell/sprite_pose.gd` | 动作帧选择、像素位移与恢复时间 |
+| `tools/build_pose_frames.gd` | 本地重建主角/守卫的六张姿态 PNG 与预览 |
 | `scripts/settings/` | 音频校准与本地设置 |
 | `tests/run_tests.gd` | 无第三方框架的测试入口 |
 | `assets/music/README.md` | 音乐来源与授权记录 |

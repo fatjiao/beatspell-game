@@ -31,9 +31,11 @@
 .\build-playtest.ps1
 ```
 
-脚本会运行 19 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.3.1.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+脚本会运行 20 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.3.2.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
 
 当前美术方向是 **16-bit 像素风**：月夜观星台、中性施法者与黄铜守卫均采用像素素材，配合 320×180 实际渲染分辨率、最近邻采样及整数倍缩放。后续美术继续遵循像素风。素材与生成提示词见 [像素美术来源](assets/art/beatspell/pixel/README.md)。
+
+战斗已接入主角待机/蓄力/施法与守卫待机/蓄力/出击共六张独立 PNG。这些动作通过本地像素编辑原素材制作，不依赖在线生成服务；重建命令和帧规格见 [角色动作帧](assets/art/beatspell/pixel/poses/README.md)。
 
 ## 操作
 

@@ -80,6 +80,13 @@ func _run() -> void:
 	stage.call("_register_action", "cast")
 	_check(stage.get("_finished") and stage.get("_battle").is_victory(), "bonus fireball win reaches scene result")
 	_check(stage.get_node("BattleOverlay").mode == "result", "result overlay follows finish")
+	# This test starts many sounds in a single frame. Let the audio server
+	# process deferred playback cleanup before shutting down the test process.
+	for player in stage.get("_sfx_players").values():
+		player.stop()
+	for player in stage.get("_music_players").values():
+		player.stop()
+	await create_timer(0.5).timeout
 	stage.queue_free()
 	await process_frame
 	if FileAccess.file_exists(TEST_PATH):

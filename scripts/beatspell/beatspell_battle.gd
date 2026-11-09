@@ -14,8 +14,16 @@ const PracticeDirector = preload("res://scripts/beatspell/practice_director.gd")
 const Effects = preload("res://scripts/beatspell/pixel_effects.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
-const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
-const BOSS_ART = preload("res://assets/art/beatspell/pixel/warden.png")
+const CASTER_FRAMES := {
+	"idle": preload("res://assets/art/beatspell/pixel/poses/caster_idle.png"),
+	"charge": preload("res://assets/art/beatspell/pixel/poses/caster_charge.png"),
+	"cast": preload("res://assets/art/beatspell/pixel/poses/caster_cast.png"),
+}
+const BOSS_FRAMES := {
+	"idle": preload("res://assets/art/beatspell/pixel/poses/warden_idle.png"),
+	"windup": preload("res://assets/art/beatspell/pixel/poses/warden_windup.png"),
+	"strike": preload("res://assets/art/beatspell/pixel/poses/warden_strike.png"),
+}
 
 const BPM := TimingProfileScript.DEFAULT_BPM
 const BEAT_MS := TimingProfileScript.DEFAULT_BEAT_MS
@@ -611,7 +619,8 @@ func _draw_player() -> void:
 	draw_ellipse_shadow(Vector2(58, 126), Vector2(24, 3))
 	var tint := Color(1.3, 1.15, 1.0) if now < _action_flash_until else Color.WHITE
 	var pose: Rect2 = SpritePose.caster(Rect2(24, roundf(39 + lift), 72, 96), now - (_action_flash_until - 150), _last_action)
-	draw_texture_rect(CASTER_ART, pose, false, tint)
+	var frame_name := SpritePose.caster_frame(now - (_action_flash_until - 150), _last_action)
+	draw_texture_rect(CASTER_FRAMES[frame_name], pose, false, tint)
 	if _battle.shield_active or now < _shield_flash_until:
 		Effects.sprite(self, Vector2(85, 86), Effects.BARRIER)
 		draw_arc(Vector2(60, 86), 32, -1.45, 1.45, 48, Color(Art.TEAL, 0.85), 1.0, true)
@@ -655,8 +664,10 @@ func _draw_boss() -> void:
 			var angle := float(fragment) * TAU / 8
 			var location := center + Vector2(cos(angle), sin(angle)) * (25 + progress * 21)
 			draw_line(location, location + Vector2(cos(angle + 0.8), sin(angle + 0.8)) * 5, Color(Art.GOLD, 1.0 - progress), 2.0)
-	var pose: Rect2 = SpritePose.boss(Rect2(center.x - 49, center.y - 47, 98, 93), now - (_boss_attack_until - 520), now - (_boss_hit_until - 420))
-	draw_texture_rect(BOSS_ART, pose, false, tint)
+	var windup := warning and fmod(float(_adjusted_song_time()), float(BAR_MS)) >= 1400.0
+	var frame_name := SpritePose.boss_frame(now - (_boss_attack_until - 520), windup)
+	var pose: Rect2 = SpritePose.boss(Rect2(center.x - 55, center.y - 53, 110, 105), now - (_boss_attack_until - 520), now - (_boss_hit_until - 420))
+	draw_texture_rect(BOSS_FRAMES[frame_name], pose, false, tint)
 	if now < _boss_hit_until:
 		var burst_progress := clampf(float(now - (_boss_hit_until - 420)) / 420.0, 0.0, 1.0)
 		for spark in 9:

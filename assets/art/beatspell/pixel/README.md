@@ -1,6 +1,6 @@
 # Beatspell pixel assets
 
-Active art direction: 16-bit pixel art. Generated on 2026-11-09 with the built-in imagegen tool. Caster and Warden retain their generated alpha. No raster postprocessing was performed.
+Active art direction: 16-bit pixel art. The three original assets below were generated on 2026-11-09 with the built-in imagegen tool and retain their original alpha. Those source files remain unchanged. Derived battle poses in `poses/` were subsequently edited locally; see [pose provenance and rebuild instructions](poses/README.md).
 
 Assets: `observatory.png`, `caster.png`, `warden.png`. Scene renders into a 320×180 viewport with nearest filtering and integer scaling. UI wordmark is code-native 5×7 glyphs and all battle/overlay text uses code-native 3×5 bitmap glyphs; no serif title font or redistributed system font.
 
