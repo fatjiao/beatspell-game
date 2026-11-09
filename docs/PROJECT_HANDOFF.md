@@ -25,11 +25,14 @@
 - 三阶段 Boss、生命值、护盾、治疗、胜负与 90 秒时限。
 - 前九小节教学流程，以及 AEGIS 教学攻击。
 - Boss 攻击小节的四拍视觉与声音预警。
-- 第二阶段标准/切分预警交替，第三阶段使用八分拍切分预警。
+- 第二阶段标准/切分预警交替，第三阶段交替使用切分与 Rush 预警。
 - 结算显示施法成功率、判定分布、平均偏差和 EARLY/LATE 倾向。
+- 标题、倒计时、阶段切换、暂停与结算使用独立覆盖层。
+- 第三阶段交替使用切分与 Rush 预警；火球和 Boss 攻击带世界层震动。
+- `build-playtest.ps1` 可生成无需安装 Godot 的便携内部试玩压缩包。
 - 暂停、重开和音频延迟校准。
 - 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
-- 纯逻辑自动测试；当前 15 个测试组全部通过。
+- 纯逻辑和场景冒烟测试；当前 16 个测试组全部通过。
 
 当前操作：
 
@@ -114,12 +117,15 @@ git status
 | `scripts/beatspell/attack_cue_audio.gd` | Boss 预警拍的去重与音高序列 |
 | `scripts/beatspell/sfx_profile.gd` | 输入、技能、预警和命中音效的时长与混音层级 |
 | `scripts/beatspell/performance_tracker.gd` | 输入偏差、施法成功率和结算统计 |
+| `scripts/beatspell/battle_overlay.gd` | 标题、倒计时、阶段提示、暂停和结算覆盖层 |
 | `scripts/beatspell/input_trace_fade.gd` | 完成输入轨迹的淡出规则 |
 | `scripts/settings/` | 音频校准与本地设置 |
 | `tests/run_tests.gd` | 无第三方框架的测试入口 |
 | `assets/music/README.md` | 音乐来源与授权记录 |
 | `docs/adr/` | 仍然有效的架构决策 |
 | `docs/plans/` | 设计和实施记录，部分是历史方案 |
+| `build-playtest.ps1` | 测试、打包、便携运行器复制与 ZIP 生成 |
+| `docs/PLAYTEST.md` | 外部试玩步骤与反馈问题 |
 
 架构原则：节奏识别、战斗数值和 Boss 进程尽量保持为无场景依赖的纯逻辑；`beatspell_battle.gd` 负责表现与音频。修改纯逻辑时先写测试，再接入场景。
 
@@ -177,5 +183,7 @@ git push -u origin feature/short-name
 - 正式内容量、难度曲线、设置菜单、手柄提示与可访问性。
 - Windows 导出模板、版本号、崩溃检查、Steamworks 接入和商店素材。
 - 所有音乐、美术、字体、音效和第三方工具的最终授权清单。
+
+当前 `build-playtest.ps1` 生成的是内部便携包：它将本地 Godot 编辑器运行器与导出的 PCK 一起打包。正式公开发布前应从 [Godot 4.7.2 官方归档](https://godotengine.org/download/archive/4.7.2-stable/)安装 Export templates，并使用 `export_presets.cfg` 生成真正的 release EXE。
 
 详细顺序见下一阶段开发计划。

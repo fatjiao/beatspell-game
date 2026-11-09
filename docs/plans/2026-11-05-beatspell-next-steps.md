@@ -14,8 +14,8 @@
 
 - 可玩主场景已切换到 Beatspell Boss 战。
 - 三种术式、实时早晚落点、错误输入标记、轨迹淡出、三阶段 Boss 和四拍攻击预警已经完成。
-- 15 个测试组通过。
-- Task 1、Task 2 与 Task 3 已于 2026-11-09 完成；下一项是 Task 4 的垂直切片视觉整理。
+- 16 个测试组通过。
+- Task 1 至 Task 5 已于 2026-11-09 完成，当前版本为 `v0.1.0-internal`。
 - 当前最大风险不是功能缺失，而是节奏手感、声音层次和攻击可读性尚未经过外部玩家验证。
 
 开发顺序遵循：**先手感，后内容；先可测量，后凭感觉调参；先做一场完整体验，后扩关。**
@@ -129,7 +129,7 @@ git add scripts/beatspell/battle_director.gd scripts/beatspell/beatspell_battle.
 git commit -m "feat: add a readable boss rhythm variation"
 ```
 
-### Task 4: 完成垂直切片视觉整理
+### Task 4: 完成垂直切片视觉整理（已完成）
 
 **Files:**
 - Modify: `scripts/beatspell/beatspell_battle.gd`
@@ -160,7 +160,7 @@ git add scripts/beatspell/beatspell_battle.gd scenes/beatspell/beatspell_battle.
 git commit -m "polish: complete boss demo visual pass"
 ```
 
-### Task 5: 制作外部试玩包
+### Task 5: 制作外部试玩包（已完成内部便携版）
 
 **Files:**
 - Create: `export_presets.cfg`
