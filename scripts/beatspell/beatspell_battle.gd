@@ -2,6 +2,8 @@ extends Control
 
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
+const AttackCueAudioScript = preload("res://scripts/beatspell/attack_cue_audio.gd")
+const SfxProfileScript = preload("res://scripts/beatspell/sfx_profile.gd")
 const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
 const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
@@ -37,6 +39,8 @@ const DISPLAY_PATTERNS := {
 
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
+var _attack_cue_audio = AttackCueAudioScript.new()
+var _sfx_profile = SfxProfileScript.new()
 var _timing = TimingProfileScript.new()
 var _command = SpellCommandBufferScript.new(_timing)
 var _music_players: Dictionary = {}
@@ -63,7 +67,6 @@ var _result_text := ""
 var _paused := false
 var _pause_started_ticks := 0
 var _count_click_index := -1
-var _last_attack_cue_key := -1
 var _error_text := ""
 
 
@@ -141,7 +144,7 @@ func _start_run() -> void:
 	_result_text = ""
 	_paused = false
 	_count_click_index = -1
-	_last_attack_cue_key = -1
+	_attack_cue_audio.reset()
 	for player in _music_players.values():
 		player.stop()
 		player.stream_paused = false
@@ -256,16 +259,12 @@ func _adjusted_song_time() -> int:
 
 func _update_attack_cue(adjusted_time_ms: int) -> void:
 	var cue_index: int = _director.attack_cue_index(adjusted_time_ms, _bar_index, _active_phase)
-	if cue_index < 0:
-		_last_attack_cue_key = -1
+	var cue: Dictionary = _attack_cue_audio.next_cue(_bar_index, cue_index)
+	if not cue.should_play:
 		return
-	var cue_key := _bar_index * 4 + cue_index
-	if cue_key == _last_attack_cue_key:
-		return
-	_last_attack_cue_key = cue_key
 	var player: AudioStreamPlayer = _sfx_players.get("warning")
 	if player != null:
-		player.pitch_scale = 1.28 if cue_index == 3 else 0.94 + float(cue_index) * 0.06
+		player.pitch_scale = cue.pitch_scale
 		player.play()
 
 
@@ -316,7 +315,7 @@ func _setup_sfx() -> void:
 	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "heal", "boss", "warning", "error", "count"]:
 		var player := AudioStreamPlayer.new()
 		player.stream = _make_sfx(sound_name)
-		player.volume_db = -10.0 if sound_name in ["charge", "cast", "count"] else -7.0
+		player.volume_db = _sfx_profile.volume_db(sound_name)
 		player.max_polyphony = 4
 		add_child(player)
 		_sfx_players[sound_name] = player
@@ -340,11 +339,7 @@ func _update_count_in_audio() -> void:
 
 
 func _make_sfx(kind: String) -> AudioStreamWAV:
-	var duration: float = float({
-		"charge": 0.09, "cast": 0.08, "fireball": 0.30, "shield": 0.34,
-		"shield_block": 0.22, "heal": 0.42, "boss": 0.28, "warning": 0.075,
-		"error": 0.13, "count": 0.04,
-	}.get(kind, 0.1))
+	var duration := _sfx_profile.duration(kind)
 	var mix_rate := 44100
 	var sample_count := int(float(mix_rate) * duration)
 	var bytes := PackedByteArray()
@@ -353,31 +348,8 @@ func _make_sfx(kind: String) -> AudioStreamWAV:
 		var t := float(sample_index) / float(mix_rate)
 		var progress := float(sample_index) / float(sample_count)
 		var envelope := pow(1.0 - progress, 2.2)
-		var sample := 0.0
-		match kind:
-			"charge":
-				var frequency := lerpf(180.0, 95.0, progress)
-				sample = sin(TAU * frequency * t) * envelope
-			"cast":
-				sample = (sin(TAU * 520.0 * t) + sin(TAU * 1040.0 * t) * 0.35) * envelope
-			"fireball":
-				var frequency := lerpf(720.0, 82.0, progress)
-				sample = (sin(TAU * frequency * t) * 0.75 + sin(TAU * frequency * 0.51 * t) * 0.35) * envelope
-			"shield", "shield_block":
-				sample = (sin(TAU * 440.0 * t) + sin(TAU * 660.0 * t) * 0.55 + sin(TAU * 880.0 * t) * 0.25) * envelope
-			"heal":
-				var note: float = [330.0, 440.0, 550.0][mini(2, int(progress * 3.0))]
-				sample = (sin(TAU * note * t) + sin(TAU * note * 2.0 * t) * 0.22) * envelope
-			"boss":
-				var growl := 62.0 + sin(t * 31.0) * 9.0
-				sample = (sin(TAU * growl * t) + sin(TAU * growl * 1.48 * t) * 0.55) * envelope
-			"warning":
-				sample = (sin(TAU * 220.0 * t) + sin(TAU * 440.0 * t) * 0.42) * envelope
-			"error":
-				sample = (sin(TAU * 92.0 * t) + sin(TAU * 103.0 * t)) * envelope * 0.65
-			"count":
-				sample = sin(TAU * 880.0 * t) * envelope
-		var encoded := int(clampf(sample * 0.30, -1.0, 1.0) * 32767.0)
+		var sample := _synthesize_sfx_sample(kind, t, progress) * envelope
+		var encoded := int(clampf(sample * _sfx_profile.sample_gain(kind), -1.0, 1.0) * 32767.0)
 		if encoded < 0:
 			encoded += 65536
 		bytes[sample_index * 2] = encoded & 0xff
@@ -388,6 +360,33 @@ func _make_sfx(kind: String) -> AudioStreamWAV:
 	stream.stereo = false
 	stream.data = bytes
 	return stream
+
+
+func _synthesize_sfx_sample(kind: String, t: float, progress: float) -> float:
+	match kind:
+		"charge":
+			var frequency := lerpf(180.0, 95.0, progress)
+			return sin(TAU * frequency * t)
+		"cast":
+			return sin(TAU * 520.0 * t) + sin(TAU * 1040.0 * t) * 0.35
+		"fireball":
+			var frequency := lerpf(720.0, 82.0, progress)
+			return sin(TAU * frequency * t) * 0.75 + sin(TAU * frequency * 0.51 * t) * 0.35
+		"shield", "shield_block":
+			return sin(TAU * 440.0 * t) + sin(TAU * 660.0 * t) * 0.55 + sin(TAU * 880.0 * t) * 0.25
+		"heal":
+			var note: float = [330.0, 440.0, 550.0][mini(2, int(progress * 3.0))]
+			return sin(TAU * note * t) + sin(TAU * note * 2.0 * t) * 0.22
+		"boss":
+			var growl := 62.0 + sin(t * 31.0) * 9.0
+			return sin(TAU * growl * t) + sin(TAU * growl * 1.48 * t) * 0.55
+		"warning":
+			return sin(TAU * 220.0 * t) + sin(TAU * 440.0 * t) * 0.42
+		"error":
+			return (sin(TAU * 92.0 * t) + sin(TAU * 103.0 * t)) * 0.65
+		"count":
+			return sin(TAU * 880.0 * t)
+	return 0.0
 
 
 func _draw() -> void:

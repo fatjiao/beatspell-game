@@ -14,12 +14,13 @@
 
 - 可玩主场景已切换到 Beatspell Boss 战。
 - 三种术式、实时早晚落点、错误输入标记、轨迹淡出、三阶段 Boss 和四拍攻击预警已经完成。
-- 12 个测试组通过。
+- 14 个测试组通过。
+- Task 1 与 Task 2 已于 2026-11-09 完成；下一项是 Task 3 的 Boss 节奏变化设计。
 - 当前最大风险不是功能缺失，而是节奏手感、声音层次和攻击可读性尚未经过外部玩家验证。
 
 开发顺序遵循：**先手感，后内容；先可测量，后凭感觉调参；先做一场完整体验，后扩关。**
 
-### Task 1: 建立可重复的手感测试基线（下一步）
+### Task 1: 建立可重复的手感测试基线（已完成）
 
 **Files:**
 - Create: `scripts/beatspell/timing_profile.gd`
@@ -60,10 +61,12 @@ git add scripts/beatspell/timing_profile.gd scripts/beatspell/spell_command_buff
 git commit -m "refactor: centralize rhythm timing profile"
 ```
 
-### Task 2: 调整按键、技能与 Boss 预警的声音层次
+### Task 2: 调整按键、技能与 Boss 预警的声音层次（已完成）
 
 **Files:**
 - Modify: `scripts/beatspell/beatspell_battle.gd`
+- Create: `scripts/beatspell/attack_cue_audio.gd`
+- Create: `scripts/beatspell/sfx_profile.gd`
 - Create: `tests/test_attack_cue_audio.gd`
 - Modify: `tests/run_tests.gd`
 - Modify: `docs/PROJECT_HANDOFF.md`

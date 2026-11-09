@@ -15,6 +15,7 @@ func _init() -> void:
 		{"name": "battle_director", "script": preload("res://tests/test_battle_director.gd")},
 		{"name": "spell_command_buffer", "script": preload("res://tests/test_spell_command_buffer.gd")},
 		{"name": "timing_profile", "script": preload("res://tests/test_timing_profile.gd")},
+		{"name": "attack_cue_audio", "script": preload("res://tests/test_attack_cue_audio.gd")},
 		{"name": "input_trace_fade", "script": preload("res://tests/test_input_trace_fade.gd")},
 	]
 	var failure_count := 0

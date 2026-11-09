@@ -26,7 +26,8 @@
 - 前九小节教学流程，以及 AEGIS 教学攻击。
 - Boss 攻击小节的四拍视觉与声音预警。
 - 暂停、重开和音频延迟校准。
-- 纯逻辑自动测试；当前 12 个测试组全部通过。
+- 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
+- 纯逻辑自动测试；当前 14 个测试组全部通过。
 
 当前操作：
 
@@ -105,8 +106,11 @@ git status
 | `scenes/beatspell/beatspell_battle.tscn` | 当前主场景 |
 | `scripts/beatspell/beatspell_battle.gd` | 音乐时钟、输入、场景状态、音效与全部战斗绘制 |
 | `scripts/beatspell/spell_command_buffer.gd` | 输入量化、实时环位置、术式识别和判定等级 |
+| `scripts/beatspell/timing_profile.gd` | BPM、判定窗口、指令过期和校准偏移 |
 | `scripts/beatspell/battle_model.gd` | 玩家/Boss 生命、伤害、治疗、护盾和胜负 |
 | `scripts/beatspell/battle_director.gd` | 教学、Boss 阶段、攻击频率和四拍预警 |
+| `scripts/beatspell/attack_cue_audio.gd` | Boss 预警拍的去重与音高序列 |
+| `scripts/beatspell/sfx_profile.gd` | 输入、技能、预警和命中音效的时长与混音层级 |
 | `scripts/beatspell/input_trace_fade.gd` | 完成输入轨迹的淡出规则 |
 | `scripts/settings/` | 音频校准与本地设置 |
 | `tests/run_tests.gd` | 无第三方框架的测试入口 |
