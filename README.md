@@ -31,7 +31,7 @@
 .\build-playtest.ps1
 ```
 
-脚本会运行 18 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.3.0.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+脚本会运行 19 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.3.1.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
 
 当前美术方向是 **16-bit 像素风**：月夜观星台、中性施法者与黄铜守卫均采用像素素材，配合 320×180 实际渲染分辨率、最近邻采样及整数倍缩放。后续美术继续遵循像素风。素材与生成提示词见 [像素美术来源](assets/art/beatspell/pixel/README.md)。
 
@@ -77,7 +77,7 @@
 
 ## 音频
 
-Demo 暂时使用现有 120 BPM 分轨作为开发音乐。按键反馈、火球、治疗与 Boss 攻击音效由游戏实时合成。首次使用蓝牙耳机或更换音频设备后，建议按 `C` 校准。
+Demo 暂时使用现有 120 BPM 分轨作为开发音乐。独立 WAV 音效与来源见 [音效库](assets/sfx/beatspell/README.md)。源码为 `scripts/beatspell/sound_bank.gd`，运行 `tools/generate_sfx.gd` 可重建全部文件和 `build/beatspell-sound-reel.wav` 试听串。首次使用蓝牙耳机或更换音频设备后，建议按 `C` 校准。
 
 ## 测试
 

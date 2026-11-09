@@ -8,6 +8,7 @@ func _init() -> void:
 		{"name": "chart_loader", "script": preload("res://tests/test_chart_loader.gd")},
 		{"name": "calibration", "script": preload("res://tests/test_calibration.gd")},
 		{"name": "audio_assets", "script": preload("res://tests/test_audio_assets.gd")},
+		{"name": "sound_bank", "script": preload("res://tests/test_sound_bank.gd")},
 		{"name": "result_scoring", "script": preload("res://tests/test_result_scoring.gd")},
 		{"name": "stage_director", "script": preload("res://tests/test_stage_director.gd")},
 		{"name": "flowing_staff", "script": preload("res://tests/test_flowing_staff.gd")},

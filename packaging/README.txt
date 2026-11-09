@@ -1,4 +1,4 @@
-BEATSPELL INTERNAL PLAYTEST v0.3.0 - PIXEL ART
+BEATSPELL INTERNAL PLAYTEST v0.3.1 - PIXEL ART / SOUND PASS
 
 Double-click "Launch Beatspell.cmd" to start.
 

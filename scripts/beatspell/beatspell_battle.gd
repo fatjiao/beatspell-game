@@ -11,6 +11,7 @@ const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const SpritePose = preload("res://scripts/beatspell/sprite_pose.gd")
 const PracticeDirector = preload("res://scripts/beatspell/practice_director.gd")
+const Effects = preload("res://scripts/beatspell/pixel_effects.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
@@ -64,6 +65,7 @@ var _options_index := 0
 var _practice_mode := false
 var _practice_defense := false
 var _break_flash_until := 0
+var _empowered_flare := false
 var _practice = PracticeDirector.new()
 var _tutorial_casts := {"fireball": 0, "heal": 0, "shield": 0}
 var _audio_ready := false
@@ -357,6 +359,7 @@ func _cast_skill(skill: String, grade: String) -> void:
 		_battle.player_hp = _battle.MAX_PLAYER_HP
 		_battle.boss_hp = _battle.MAX_BOSS_HP
 	_last_skill = skill
+	_empowered_flare = skill == "fireball" and int(result.bonus) > 0
 	_skill_flash_until = Time.get_ticks_msec() + 620
 	_play_sfx(skill)
 	match skill:
@@ -382,6 +385,7 @@ func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
 		_show_feedback("PERFECT GUARD" if result.perfect_guard else "BLOCKED", Art.TEAL, 760)
 		_play_sfx("parry" if result.perfect_guard else "shield_block")
 		if result.broke:
+			_play_sfx("break")
 			_break_flash_until = Time.get_ticks_msec() + 850
 			_boss_hit_until = Time.get_ticks_msec() + 420
 			_show_feedback("WARDEN EXPOSED", Art.GOLD, 1000)
@@ -444,6 +448,7 @@ func _show_feedback(text: String, color: Color, duration_ms: int) -> void:
 func _finish_battle(text: String, victory: bool) -> void:
 	_finished = true
 	_result_text = text
+	_play_sfx("victory" if victory else "defeat")
 	_feedback_color = Color("69f0a5") if victory else Color("ff668e")
 	for player in _music_players.values():
 		player.stream_paused = true
@@ -515,9 +520,9 @@ func _setup_music() -> bool:
 
 
 func _setup_sfx() -> void:
-	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "parry", "heal", "boss", "warning", "error", "count"]:
+	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "parry", "heal", "boss", "warning", "error", "count", "break", "victory", "defeat"]:
 		var player := AudioStreamPlayer.new()
-		player.stream = _make_sfx(sound_name)
+		player.stream = load("res://assets/sfx/beatspell/%s.wav" % sound_name)
 		player.volume_db = _sfx_profile.volume_db(sound_name)
 		player.max_polyphony = 4
 		add_child(player)
@@ -539,59 +544,6 @@ func _update_count_in_audio() -> void:
 		if player != null:
 			player.pitch_scale = 1.35 if click_index == 3 else 1.0
 			player.play()
-
-
-func _make_sfx(kind: String) -> AudioStreamWAV:
-	var duration := _sfx_profile.duration(kind)
-	var mix_rate := 44100
-	var sample_count := int(float(mix_rate) * duration)
-	var bytes := PackedByteArray()
-	bytes.resize(sample_count * 2)
-	for sample_index in sample_count:
-		var t := float(sample_index) / float(mix_rate)
-		var progress := float(sample_index) / float(sample_count)
-		var envelope := pow(1.0 - progress, 2.2)
-		var sample := _synthesize_sfx_sample(kind, t, progress) * envelope
-		var encoded := int(clampf(sample * _sfx_profile.sample_gain(kind), -1.0, 1.0) * 32767.0)
-		if encoded < 0:
-			encoded += 65536
-		bytes[sample_index * 2] = encoded & 0xff
-		bytes[sample_index * 2 + 1] = (encoded >> 8) & 0xff
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = mix_rate
-	stream.stereo = false
-	stream.data = bytes
-	return stream
-
-
-func _synthesize_sfx_sample(kind: String, t: float, progress: float) -> float:
-	match kind:
-		"parry":
-			return sin(TAU * 880.0 * t) * 0.7 + sin(TAU * 1320.0 * t) * 0.4
-		"charge":
-			var frequency := lerpf(180.0, 95.0, progress)
-			return sin(TAU * frequency * t)
-		"cast":
-			return sin(TAU * 520.0 * t) + sin(TAU * 1040.0 * t) * 0.35
-		"fireball":
-			var frequency := lerpf(720.0, 82.0, progress)
-			return sin(TAU * frequency * t) * 0.75 + sin(TAU * frequency * 0.51 * t) * 0.35
-		"shield", "shield_block":
-			return sin(TAU * 440.0 * t) + sin(TAU * 660.0 * t) * 0.55 + sin(TAU * 880.0 * t) * 0.25
-		"heal":
-			var note: float = [330.0, 440.0, 550.0][mini(2, int(progress * 3.0))]
-			return sin(TAU * note * t) + sin(TAU * note * 2.0 * t) * 0.22
-		"boss":
-			var growl := 62.0 + sin(t * 31.0) * 9.0
-			return sin(TAU * growl * t) + sin(TAU * growl * 1.48 * t) * 0.55
-		"warning":
-			return sin(TAU * 220.0 * t) + sin(TAU * 440.0 * t) * 0.42
-		"error":
-			return (sin(TAU * 92.0 * t) + sin(TAU * 103.0 * t)) * 0.65
-		"count":
-			return sin(TAU * 880.0 * t)
-	return 0.0
 
 
 func _draw() -> void:
@@ -661,6 +613,7 @@ func _draw_player() -> void:
 	var pose: Rect2 = SpritePose.caster(Rect2(24, roundf(39 + lift), 72, 96), now - (_action_flash_until - 150), _last_action)
 	draw_texture_rect(CASTER_ART, pose, false, tint)
 	if _battle.shield_active or now < _shield_flash_until:
+		Effects.sprite(self, Vector2(85, 86), Effects.BARRIER)
 		draw_arc(Vector2(60, 86), 32, -1.45, 1.45, 48, Color(Art.TEAL, 0.85), 1.0, true)
 		draw_arc(Vector2(60, 86), 34, -1.3, 1.3, 48, Color(Art.TEAL, 0.2), 0.5, true)
 		for rune in 3:
@@ -668,7 +621,7 @@ func _draw_player() -> void:
 			var point := Vector2(60, 86) + Vector2(cos(angle), sin(angle)) * 32
 			draw_circle(point, 1.2, Art.IVORY)
 	if now < _action_flash_until:
-		draw_circle(Vector2(83, 80), 5, Color(Art.TEAL, 0.18))
+		Effects.sprite(self, Vector2(83, 80), Effects.ORB)
 
 func draw_ellipse_shadow(center: Vector2, extent: Vector2) -> void:
 	var points := PackedVector2Array()
@@ -753,34 +706,40 @@ func _attack_pattern_color() -> Color:
 func _draw_spell_effects() -> void:
 	var now := _visual_now()
 	if now < _skill_flash_until:
-		var progress := clampf(1.0 - float(_skill_flash_until - now) / 620.0, 0.0, 1.0)
+		var age := 620 - (_skill_flash_until - now)
 		match _last_skill:
 			"fireball":
-				var eased := 1.0 - pow(1.0 - progress, 2.0)
 				var start := Vector2(82, 87)
-				var target := Vector2(234, 77)
-				var projectile := start.lerp(target, eased)
-				for trail_index in 4:
-					var trail_position := projectile.lerp(start, 0.05 + float(trail_index) * 0.055)
-					var trail_color := Color("ff6b5e")
-					trail_color.a = 0.34 - float(trail_index) * 0.065
-					draw_circle(trail_position, 7.0 - float(trail_index), trail_color)
-				draw_circle(projectile, 8.0, Color(1.0, 0.25, 0.18, 0.16))
-				draw_circle(projectile, 4.0, Color("ffc45e"))
+				var target := Vector2(243, 76)
+				if age < 180:
+					var progress := clampf(float(age) / 180.0, 0.0, 1.0)
+					var projectile := start.lerp(target, progress)
+					for trail in 6:
+						var point := projectile - Vector2(4 + trail * 4, 0)
+						draw_rect(Rect2(point.round(), Vector2(2, 1)), Color(Art.EMBER, 0.65 - trail * 0.08))
+					Effects.fireball(self, projectile, int(age / 45), _empowered_flare)
+				else:
+					var progress := clampf(float(age - 180) / 440.0, 0, 1)
+					Effects.burst(self, target, progress, Art.GOLD if _empowered_flare else Art.EMBER, 16 if _empowered_flare else 10)
 			"heal":
-				for particle_index in 7:
-					var phase := fmod(progress + float(particle_index) * 0.17, 1.0)
-					var particle_position := Vector2(61 + sin(float(particle_index) * 2.3) * 18.0, 108 - phase * 54.0)
-					var particle_color := Color("69f0a5")
-					particle_color.a = sin(phase * PI) * 0.75
-					draw_circle(particle_position, 2.0 + phase, particle_color)
+				for particle in 7:
+					var phase := fmod(float(age) / 620.0 + float(particle) * 0.17, 1.0)
+					var point := Vector2(61 + sin(float(particle) * 2.3) * 18, 115 - phase * 55)
+					Effects.heal_cross(self, point, sin(phase * PI) * 0.8)
+			"shield":
+				if age < 220:
+					for point in 8:
+						var angle := float(point) * TAU / 8
+						Effects.heal_cross(self, Vector2(61, 86) + Vector2(cos(angle), sin(angle)) * (16 + float(age) / 22), 1.0 - float(age) / 220)
 	if now < _boss_attack_until:
-		var strike_progress := clampf(1.0 - float(_boss_attack_until - now) / 520.0, 0.0, 1.0)
-		var strike_head := Vector2(238, 74).lerp(Vector2(84, 91), strike_progress)
-		var strike_color := Color("45e6ff") if now < _shield_flash_until else Color("ff4f70")
-		strike_color.a = 0.78 * (1.0 - strike_progress * 0.55)
-		draw_line(Vector2(238, 74), strike_head, strike_color, 3.0)
-		draw_circle(strike_head, 5.0, Color(strike_color, 0.22))
+		var progress := clampf(1.0 - float(_boss_attack_until - now) / 520.0, 0, 1)
+		var head := Vector2(238, 74).lerp(Vector2(84, 91), minf(progress * 2, 1))
+		var color := Art.TEAL if now < _shield_flash_until else Art.EMBER
+		for fragment in 8:
+			var point := head.lerp(Vector2(238, 74), float(fragment) * 0.10)
+			draw_rect(Rect2(point.round(), Vector2(4 - fragment % 3, 2)), Color(color, 0.8 - fragment * 0.08))
+		if progress > 0.35:
+			Effects.burst(self, Vector2(84, 91), (progress - 0.35) / 0.65, color)
 
 
 func _draw_beat_ring() -> void:
@@ -913,6 +872,7 @@ func _clear_visual_effects() -> void:
 	_boss_attack_until = 0
 	_shield_flash_until = 0
 	_stage_shake_until = 0
+	_empowered_flare = false
 	_break_flash_until = 0
 	_last_action = ""
 	_last_skill = ""

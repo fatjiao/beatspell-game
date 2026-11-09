@@ -2,7 +2,9 @@
 
 这份文档是换电脑或开启新 AI 开发任务时的总入口。当前有效方向是 **Beatspell 节奏施法 Boss 战**；`scenes/prototype/` 下的《一个人的乐队》属于早期原型，不是当前主线。
 
-当前版本为 `v0.3.0-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。当前场景引用 `assets/art/beatspell/pixel/` 的三张像素素材，完整提示词见该目录 README。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.3.0.zip`。
+当前版本为 `v0.3.1-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。当前场景引用 `assets/art/beatspell/pixel/` 的三张像素素材，完整提示词见该目录 README。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.3.1.zip`。
+
+最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。图像生成服务连接失败，新角色姿态帧未生成；不能把现有程序姿态动画描述为已完成的新精灵帧。
 
 本批加入精准格挡、三格破防、四连击共鸣、H 术式手册和练习中的 T 无伤害防御训练。规则与有效伤害/治疗账本均在 `battle_model.gd`；精准格挡要求场景提供输入与攻击的音乐时间，不使用墙钟。Boss 生命值现为 60，教学九小节固定第一阶段。
 
@@ -38,7 +40,7 @@
 - `build-playtest.ps1` 可生成无需安装 Godot 的便携内部试玩压缩包。
 - 暂停、重开和音频延迟校准。
 - 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
-- 纯逻辑和场景冒烟测试；当前 18 个测试组，以及 `tests/test_playtest_flow.gd` 场景流程测试。
+- 纯逻辑、音效采样和场景冒烟测试；当前 19 个测试组，以及 `tests/test_playtest_flow.gd` 场景流程测试。
 - 无伤害、无时限的练习模式，三种术式每种两次成功后自由练习。
 - 音乐、音效、震动与全屏设置；暂停后保留动画剩余时间。
 
