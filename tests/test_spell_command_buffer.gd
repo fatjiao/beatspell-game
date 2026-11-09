@@ -1,6 +1,7 @@
 extends RefCounted
 
 const CommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
+const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 
 
 func run() -> Array[String]:
@@ -58,6 +59,11 @@ func run() -> Array[String]:
 	command.register_step(8010, 500.0)
 	var good_flare: Dictionary = command.finish(8570, 500.0)
 	_expect(failures, good_flare.skill == "fireball" and good_flare.grade == "good", "near-beat finish casts with a good grade")
+
+	var strict_profile = TimingProfileScript.new(120.0, 4, 20, 80)
+	var strict_command = CommandBufferScript.new(strict_profile)
+	var strict_start: Dictionary = strict_command.register_step(90)
+	_expect(failures, strict_start.status == "off_pulse", "command buffer uses the injected timing profile")
 	return failures
 
 

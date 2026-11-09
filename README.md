@@ -55,4 +55,4 @@ Demo 暂时使用现有 120 BPM 分轨作为开发音乐。按键反馈、火球
 & '.tools\godot\Godot_v4.7.2-stable_win64_console.exe' --headless --path . --script res://tests/run_tests.gd
 ```
 
-施法命令解析器、战斗模型与 Boss 进程控制器均有独立测试。设计、架构决策与实施计划位于 `docs/`。
+施法命令解析器、节奏参数、战斗模型与 Boss 进程控制器均有独立测试。BPM、判定窗口、指令过期长度与输入校准偏移集中在 `scripts/beatspell/timing_profile.gd`。设计、架构决策与实施计划位于 `docs/`。

@@ -1,21 +1,25 @@
 extends RefCounted
 
-const PERFECT_WINDOW_MS := 55
-const GOOD_WINDOW_MS := 135
-const RING_TICKS := 4
+const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 
 var events: Array = []
 var display_events: Array = []
 var broken := false
+var timing_profile
+
+
+func _init(profile = null) -> void:
+	timing_profile = profile if profile != null else TimingProfileScript.new()
 
 
 func is_active() -> bool:
 	return not events.is_empty()
 
 
-func register_step(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
-	var quantized := _quantize(song_time_ms, beat_ms)
-	var event := _make_event("step", quantized, song_time_ms, beat_ms)
+func register_step(song_time_ms: int, beat_override_ms: float = -1.0) -> Dictionary:
+	var current_beat_ms := _resolve_beat_ms(beat_override_ms)
+	var quantized: Dictionary = timing_profile.quantize(song_time_ms, current_beat_ms)
+	var event := _make_event("step", quantized, song_time_ms, current_beat_ms)
 	if not is_active() and not display_events.is_empty():
 		display_events.clear()
 	if not quantized.valid:
@@ -33,10 +37,11 @@ func register_step(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
 	return {"status": "accepted", "event": event}
 
 
-func finish(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
-	var quantized := _quantize(song_time_ms, beat_ms)
+func finish(song_time_ms: int, beat_override_ms: float = -1.0) -> Dictionary:
+	var current_beat_ms := _resolve_beat_ms(beat_override_ms)
+	var quantized: Dictionary = timing_profile.quantize(song_time_ms, current_beat_ms)
 	var completed_events := display_events.duplicate(true)
-	completed_events.append(_make_event("finish", quantized, song_time_ms, beat_ms))
+	completed_events.append(_make_event("finish", quantized, song_time_ms, current_beat_ms))
 	var result := {"skill": "", "grade": "miss", "events": completed_events}
 	if not quantized.valid or broken:
 		reset()
@@ -58,11 +63,12 @@ func finish(song_time_ms: int, beat_ms: float = 500.0) -> Dictionary:
 	return result
 
 
-func expire_if_needed(song_time_ms: int, beat_ms: float = 500.0) -> bool:
+func expire_if_needed(song_time_ms: int, beat_override_ms: float = -1.0) -> bool:
 	if not is_active():
 		return false
-	var first_time := float(events[0].tick) * beat_ms
-	if float(song_time_ms) <= first_time + beat_ms * 3.25:
+	var current_beat_ms := _resolve_beat_ms(beat_override_ms)
+	var first_time := float(events[0].tick) * current_beat_ms
+	if float(song_time_ms) <= first_time + timing_profile.command_expiry_ms(current_beat_ms):
 		return false
 	reset()
 	return true
@@ -74,30 +80,22 @@ func reset() -> void:
 	broken = false
 
 
-func _quantize(song_time_ms: int, beat_ms: float) -> Dictionary:
-	var tick_ms := beat_ms
-	var tick := int(round(float(song_time_ms) / tick_ms))
-	var offset_ms := int(round(float(song_time_ms) - float(tick) * tick_ms))
-	var valid := absi(offset_ms) <= GOOD_WINDOW_MS
-	return {
-		"valid": valid,
-		"tick": tick,
-		"offset_ms": offset_ms,
-		"grade": "perfect" if valid and absi(offset_ms) <= PERFECT_WINDOW_MS else "good" if valid else "miss",
-	}
-
-
 func _make_event(action: String, quantized: Dictionary, song_time_ms: int, beat_ms: float) -> Dictionary:
-	var cycle_ms := beat_ms * float(RING_TICKS)
+	var ring_ticks: int = timing_profile.beats_per_bar
+	var cycle_ms := beat_ms * float(ring_ticks)
 	return {
 		"action": action,
 		"tick": quantized.tick,
-		"ring_tick": posmod(int(quantized.tick), RING_TICKS),
+		"ring_tick": posmod(int(quantized.tick), ring_ticks),
 		"ring_phase": fposmod(float(song_time_ms), cycle_ms) / cycle_ms,
 		"input_time_ms": song_time_ms,
 		"offset_ms": quantized.offset_ms,
 		"grade": quantized.grade,
 	}
+
+
+func _resolve_beat_ms(beat_override_ms: float) -> float:
+	return beat_override_ms if beat_override_ms > 0.0 else timing_profile.beat_ms()
 
 
 func _combined_grade(completed_events: Array) -> String:

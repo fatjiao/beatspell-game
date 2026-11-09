@@ -3,12 +3,13 @@ extends Control
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
 const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
+const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 
-const BPM := 120.0
-const BEAT_MS := 500.0
-const BAR_MS := 2000
+const BPM := TimingProfileScript.DEFAULT_BPM
+const BEAT_MS := TimingProfileScript.DEFAULT_BEAT_MS
+const BAR_MS := TimingProfileScript.DEFAULT_BAR_MS
 const BATTLE_DURATION_MS := 90_000
 const MUSIC_FILES := {
 	"drums": "res://assets/music/chapter1/drums.ogg",
@@ -36,11 +37,11 @@ const DISPLAY_PATTERNS := {
 
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
-var _command = SpellCommandBufferScript.new()
+var _timing = TimingProfileScript.new()
+var _command = SpellCommandBufferScript.new(_timing)
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
 var _audio_ready := false
-var _audio_offset_ms := 0
 var _song_start_ticks := 0
 var _song_time_ms := -2000
 var _music_started := false
@@ -67,7 +68,7 @@ var _error_text := ""
 
 
 func _ready() -> void:
-	_audio_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
+	_timing.input_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
 	_start_run()
@@ -92,7 +93,7 @@ func _process(_delta: float) -> void:
 		) * 1000.0))
 		_update_command()
 		_update_bar()
-		_update_attack_cue(maxi(0, _song_time_ms - _audio_offset_ms))
+		_update_attack_cue(_adjusted_song_time())
 		if _song_time_ms >= BATTLE_DURATION_MS and not _finished:
 			_finish_battle("RITUAL EXPIRED", false)
 	queue_redraw()
@@ -160,7 +161,7 @@ func _start_music() -> void:
 func _update_bar() -> void:
 	if _finished:
 		return
-	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+	var adjusted_time := _adjusted_song_time()
 	var new_bar := int(floor(float(adjusted_time) / float(BAR_MS)))
 	if new_bar == _bar_index:
 		return
@@ -178,14 +179,14 @@ func _update_bar() -> void:
 func _update_command() -> void:
 	if _finished:
 		return
-	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
-	if _command.expire_if_needed(adjusted_time, BEAT_MS):
+	var adjusted_time := _adjusted_song_time()
+	if _command.expire_if_needed(adjusted_time):
 		_show_feedback("LOST THE PHRASE", Color("ff668e"), 620)
 		_play_sfx("error")
 
 
 func _register_action(action: String) -> void:
-	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+	var adjusted_time := _adjusted_song_time()
 	_update_command()
 	_update_bar()
 	if _finished:
@@ -194,9 +195,9 @@ func _register_action(action: String) -> void:
 	_action_flash_until = Time.get_ticks_msec() + 150
 	_play_sfx(action)
 	if action == "charge":
-		_command.register_step(adjusted_time, BEAT_MS)
+		_command.register_step(adjusted_time)
 		return
-	var result: Dictionary = _command.finish(adjusted_time, BEAT_MS)
+	var result: Dictionary = _command.finish(adjusted_time)
 	_recent_command = result.events.duplicate(true)
 	if result.skill.is_empty():
 		_battle.cast_spell("")
@@ -247,6 +248,10 @@ func _resolve_boss_attack() -> void:
 
 func _is_attack_bar(bar: int) -> bool:
 	return _director.is_attack_bar(bar, _active_phase)
+
+
+func _adjusted_song_time() -> int:
+	return _timing.adjusted_song_time(_song_time_ms)
 
 
 func _update_attack_cue(adjusted_time_ms: int) -> void:
@@ -484,7 +489,7 @@ func _draw_boss() -> void:
 	if now < _boss_hit_until:
 		center.x += -3.0 if now % 2 == 0 else 3.0
 	if warning:
-		var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+		var adjusted_time := _adjusted_song_time()
 		var attack_progress := fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
 		draw_circle(center, 39.0 + attack_progress * 8.0, Color(1.0, 0.18, 0.35, 0.06 + attack_progress * 0.12))
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, Color("ff4f70"), 2.0)
@@ -501,7 +506,7 @@ func _draw_boss() -> void:
 	draw_line(center + Vector2(0, 18), center + Vector2(0, 34), Color("ffb65e"), 2.0)
 	draw_circle(center + Vector2(0, 36), 4.0, Color("ffb65e"))
 	if warning:
-		var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+		var adjusted_time := _adjusted_song_time()
 		var cue_index: int = _director.attack_cue_index(adjusted_time, _bar_index, _active_phase)
 		var beat_phase := fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
 		for pip_index in 4:
@@ -555,7 +560,7 @@ func _draw_beat_ring() -> void:
 	var beat_phase := 0.0
 	var current_ring_tick := -1
 	var cycle_progress := 0.0
-	var adjusted_time := maxi(0, _song_time_ms - _audio_offset_ms)
+	var adjusted_time := _adjusted_song_time()
 	if _song_time_ms >= 0:
 		beat_phase = fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
 		cycle_progress = fmod(float(adjusted_time), float(BAR_MS)) / float(BAR_MS)
