@@ -1,0 +1,29 @@
+# Gameplay guide figures
+
+Eight 1200×940 PNG figures accompany the online Page and `docs/GAMEPLAY.md`. They combine the game's existing preview captures with code-native labels and diagrams. Original game textures and captures are not overwritten. These are documentation assets; `docs/.gdignore` keeps them out of Godot's runtime asset imports.
+
+| File | Subject |
+|---|---|
+| battle-overview.png | Numbered annotations on the battle interface |
+| timing-ring.png | Early, on-time and late input positions |
+| spell-patterns.png | Three spell recipes on a 500ms beat timeline |
+| guard-and-bonuses.png | Guard, fracture, exposure and resonance relationships |
+| boss-cues.png | Standard, syncopated and rush warning times |
+| practice.png | Practice mode and lesson progress |
+| results.png | Result panel and interpretation |
+| character-poses.png | Actual caster and Warden pose textures |
+
+Rebuild from the repository root with a graphical Godot runtime:
+
+```powershell
+& '.tools\godot\Godot_v4.7.2-stable_win64_console.exe' --path . --script res://tests/capture_beatspell_preview.gd
+& '.tools\godot\Godot_v4.7.2-stable_win64_console.exe' --path . --script res://tools/build_gameplay_figures.gd
+```
+
+The first command captures real game UI in reproducible illustrative states, including sample result statistics. The second uses a separate 1200×940 viewport, nearest-neighbor screenshot rendering, and local system fonts for Chinese labels. No font files are redistributed. Do not run the figure renderer headlessly; it needs graphical rendering to produce the images.
+
+When gameplay, timing or layout changes, revise the diagram labels and coordinates in the generator as needed, rebuild and visually inspect the affected PNGs. The existing screenshots are under ignored `build/`; another computer must run the capture command first.
+
+`page-images.json` maps local files to confirmed uploaded native Page image references and SHA-256 digests. The online guide embeds these as native image blocks at width 960 with preserved aspect ratio. Unchanged files can reuse those references. Changed files need a new upload and a guarded update to their existing Page image blocks. Never replace online image references with GitHub raw URLs; those do not create native Page images.
+
+The eight images were inspected locally for labels, glyphs, cropping and content. Online readback confirmed all eight native image blocks and image geometry. Whole-page browser preview was blocked by a separate browser sign-in requirement; it was not treated as a document access failure.

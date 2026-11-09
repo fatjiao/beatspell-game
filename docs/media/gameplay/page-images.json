@@ -1,0 +1,86 @@
+{
+  "page_id": "page_3464b9beb91481919abe7d81d68d2251",
+  "url": "https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251",
+  "figures": [
+    {
+      "name": "battle-overview",
+      "title": "战斗界面标注",
+      "section": "操作与界面",
+      "path": "battle-overview.png",
+      "reference": "library-file:fde1_bGliZmlsZV9ZTE14SEdPakxLY2pEOEtqS1FxTkpR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "ff4af3ade4982ef75b54ee91230ed49b4ff4bac5abddce5a346d217924126bf9",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "timing-ring",
+      "title": "偏早 准时与偏晚",
+      "section": "公共节拍与实时落点",
+      "path": "timing-ring.png",
+      "reference": "library-file:fde1_bGliZmlsZV90QjRMcDh1QjhaZ2trVDZNTDBBbEZR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "a646b57bed3c66b24fdd2dd4293c95c0609c0b1e7aee520f75899c9664b6ef22",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "spell-patterns",
+      "title": "三种术式逐拍输入",
+      "section": "三种术式与输入示例",
+      "path": "spell-patterns.png",
+      "reference": "library-file:fde1_bGliZmlsZV9xMTVzcUpoc01EdlVyNFNIcFQxaTdB_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "6c567e805dc9ecd56029f80ef529ae99a86dd0f1be12f258c478bb2bca297990",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "guard-and-bonuses",
+      "title": "精准格挡 破防与增伤关系",
+      "section": "格挡 破防与共鸣",
+      "path": "guard-and-bonuses.png",
+      "reference": "library-file:fde1_bGliZmlsZV9YQTdmWmp1U1JyUnVmYlFRbUhKcmln_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "75f571efba47526ce005c4a4aa84d993c9f335e82b0fd63d4611574afc210bd4",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "boss-cues",
+      "title": "Boss 三种预警时序",
+      "section": "Boss 阶段与攻击预警",
+      "path": "boss-cues.png",
+      "reference": "library-file:fde1_bGliZmlsZV9XQTAxTllPUzBfcHhjY3dhSjM0X0l3_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "fdf67b407713f98b18abfc314c8035c861c32feef988f376d76d4b0d5703a6a4",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "practice",
+      "title": "独立练习实机说明",
+      "section": "教学与练习模式",
+      "path": "practice.png",
+      "reference": "library-file:fde1_bGliZmlsZV8tTnR2Z3E1ZUZ5ZHpBcUtHeDBKSkRR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "92ed92c8d1ea34c5448ad5654bfbc5453faf1577b4b04a715861131f181cfb5f",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "results",
+      "title": "结算画面实机说明",
+      "section": "结算统计与评级",
+      "path": "results.png",
+      "reference": "library-file:fde1_bGliZmlsZV9pZDNCVnNHMUtSbmY4Y2JPai1qOTdn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "36b137efaa507ad5b5cf16620fa9cf0e11b50abf54c4fcd6d68b3f221699b487",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "character-poses",
+      "title": "角色姿态对照",
+      "section": "美术声音与交互约束",
+      "path": "character-poses.png",
+      "reference": "library-file:fde1_bGliZmlsZV93NWF4SEdOWEVqRnZWVHgxUHNYWDBn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "432dc7af1c87e71502a70af419a23855325254908a2540eab1089c19d1d7860f",
+      "width": 1200,
+      "height": 940
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 
 最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。角色动作在图像工具连接失败期间改用 `tools/build_pose_frames.gd` 本地编辑原素材，产出六张实际 PNG；运行方法见 `assets/art/beatspell/pixel/poses/README.md`。随后在线图像连接已恢复并通过真实生成验证，但这六张已接入素材仍为本地派生图，不能改写它们的来源记录。
 
-玩法详细文档：[在线 Page](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)，仓库副本为 `docs/GAMEPLAY.md`。用户明确要求后续开发同步整理详细玩法；相关规则已写入根目录 `AGENTS.md`。每批涉及玩法和数值的变更都要更新两处，在线编辑前先读取并保留用户修改；同步失败时明确记录待同步部分。此要求适用于开发交付，不是后台定时任务。
+玩法图文文档：[在线 Page](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)，仓库副本为 `docs/GAMEPLAY.md`。用户明确要求图文结合，当前有 8 张界面截图与机制图解，保存在 `docs/media/gameplay/`，重建方法见该目录 README；上传映射见 `page-images.json`。每批涉及玩法、数值或界面的变更都要同步更新两处的相关文字与配图，在线编辑前先读取并保留用户修改；同步失败时明确记录待同步部分。相关规则已写入根目录 `AGENTS.md`，适用于开发交付，不是后台定时任务。
 
 本批加入精准格挡、三格破防、四连击共鸣、H 术式手册和练习中的 T 无伤害防御训练。规则与有效伤害/治疗账本均在 `battle_model.gd`；精准格挡要求场景提供输入与攻击的音乐时间，不使用墙钟。Boss 生命值现为 60，教学九小节固定第一阶段。
 
