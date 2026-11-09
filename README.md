@@ -6,7 +6,8 @@
 
 ## 项目文档
 
-- [在线玩法图文说明](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)：8 张界面截图与机制图解，配合完整规则、输入示例和数值；[仓库同版副本](docs/GAMEPLAY.md)
+- [公开玩法图文说明](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md)：无需登录即可查看和转发，包含 8 张界面截图与机制图解、完整规则、输入示例和数值
+- [Pages 编辑版](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)：需要对应账号访问，与公开版同步维护
 - [开发接力指南](docs/PROJECT_HANDOFF.md)：新电脑配置、当前状态、目录结构、验证方法与 AI 接力提示词
 - [下一阶段开发计划](docs/plans/2026-11-05-beatspell-next-steps.md)：按优先级排列的 Demo 路线图和验收标准
 - [架构决策](docs/adr/0001-deterministic-rhythm-battle-core.md)：为什么将节奏逻辑、战斗逻辑与表现层分离
