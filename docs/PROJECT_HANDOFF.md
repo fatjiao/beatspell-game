@@ -25,9 +25,11 @@
 - 三阶段 Boss、生命值、护盾、治疗、胜负与 90 秒时限。
 - 前九小节教学流程，以及 AEGIS 教学攻击。
 - Boss 攻击小节的四拍视觉与声音预警。
+- 第二阶段标准/切分预警交替，第三阶段使用八分拍切分预警。
+- 结算显示施法成功率、判定分布、平均偏差和 EARLY/LATE 倾向。
 - 暂停、重开和音频延迟校准。
 - 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
-- 纯逻辑自动测试；当前 14 个测试组全部通过。
+- 纯逻辑自动测试；当前 15 个测试组全部通过。
 
 当前操作：
 
@@ -111,6 +113,7 @@ git status
 | `scripts/beatspell/battle_director.gd` | 教学、Boss 阶段、攻击频率和四拍预警 |
 | `scripts/beatspell/attack_cue_audio.gd` | Boss 预警拍的去重与音高序列 |
 | `scripts/beatspell/sfx_profile.gd` | 输入、技能、预警和命中音效的时长与混音层级 |
+| `scripts/beatspell/performance_tracker.gd` | 输入偏差、施法成功率和结算统计 |
 | `scripts/beatspell/input_trace_fade.gd` | 完成输入轨迹的淡出规则 |
 | `scripts/settings/` | 音频校准与本地设置 |
 | `tests/run_tests.gd` | 无第三方框架的测试入口 |

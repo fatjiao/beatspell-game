@@ -3,6 +3,7 @@ extends Control
 const BattleModelScript = preload("res://scripts/beatspell/battle_model.gd")
 const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
 const AttackCueAudioScript = preload("res://scripts/beatspell/attack_cue_audio.gd")
+const PerformanceTrackerScript = preload("res://scripts/beatspell/performance_tracker.gd")
 const SfxProfileScript = preload("res://scripts/beatspell/sfx_profile.gd")
 const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_buffer.gd")
 const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
@@ -12,6 +13,7 @@ const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const BPM := TimingProfileScript.DEFAULT_BPM
 const BEAT_MS := TimingProfileScript.DEFAULT_BEAT_MS
 const BAR_MS := TimingProfileScript.DEFAULT_BAR_MS
+const ATTACK_SUBDIVISION_MS := BattleDirectorScript.SUBDIVISION_MS
 const BATTLE_DURATION_MS := 90_000
 const MUSIC_FILES := {
 	"drums": "res://assets/music/chapter1/drums.ogg",
@@ -40,6 +42,7 @@ const DISPLAY_PATTERNS := {
 var _battle = BattleModelScript.new()
 var _director = BattleDirectorScript.new()
 var _attack_cue_audio = AttackCueAudioScript.new()
+var _performance = PerformanceTrackerScript.new()
 var _sfx_profile = SfxProfileScript.new()
 var _timing = TimingProfileScript.new()
 var _command = SpellCommandBufferScript.new(_timing)
@@ -134,6 +137,7 @@ func _start_run() -> void:
 	_bar_index = -1
 	_active_phase = 1
 	_command.reset()
+	_performance.reset()
 	_recent_command.clear()
 	_feedback = "LISTEN TO THE PULSE"
 	_feedback_color = Color("dad7ff")
@@ -198,9 +202,13 @@ func _register_action(action: String) -> void:
 	_action_flash_until = Time.get_ticks_msec() + 150
 	_play_sfx(action)
 	if action == "charge":
-		_command.register_step(adjusted_time)
+		var step_result: Dictionary = _command.register_step(adjusted_time)
+		_performance.record_input(step_result.event)
 		return
 	var result: Dictionary = _command.finish(adjusted_time)
+	if not result.events.is_empty():
+		_performance.record_input(result.events[-1])
+	_performance.record_attempt(result.skill, result.grade)
 	_recent_command = result.events.duplicate(true)
 	if result.skill.is_empty():
 		_battle.cast_spell("")
@@ -507,18 +515,30 @@ func _draw_boss() -> void:
 	if warning:
 		var adjusted_time := _adjusted_song_time()
 		var cue_index: int = _director.attack_cue_index(adjusted_time, _bar_index, _active_phase)
-		var beat_phase := fmod(float(adjusted_time), BEAT_MS) / BEAT_MS
-		for pip_index in 4:
-			var pip_position := Vector2(241 + pip_index * 12, 117)
-			var lit := pip_index <= cue_index
+		var cue_steps: Array = _director.attack_cue_steps(_bar_index, _active_phase)
+		var time_in_bar := adjusted_time - _bar_index * BAR_MS
+		var current_step := clampi(int(floor(float(time_in_bar) / float(ATTACK_SUBDIVISION_MS))), 0, 7)
+		var subdivision_phase := fmod(float(time_in_bar), float(ATTACK_SUBDIVISION_MS)) / float(ATTACK_SUBDIVISION_MS)
+		for subdivision in 8:
+			var pip_position := Vector2(224 + subdivision * 10, 117)
+			var cue_ordinal := cue_steps.find(subdivision)
+			if cue_ordinal < 0:
+				draw_circle(pip_position, 1.15, Color(0.30, 0.16, 0.27, 0.62))
+				continue
+			var lit: bool = cue_ordinal <= cue_index
+			var is_current_cue: bool = subdivision == current_step and cue_ordinal == cue_index
 			var pip_color := Color("ff668e") if lit else Color("4d2944")
-			pip_color.a = 0.94 if lit else 0.55
-			var pip_size := 3.5 + (1.0 - beat_phase) * 1.2 if pip_index == cue_index else 3.0
+			pip_color.a = 0.96 if lit else 0.58
+			var pip_size := 3.0
+			if is_current_cue:
+				pip_size += (1.0 - subdivision_phase) * 1.5
 			var pip := PackedVector2Array([
 				pip_position + Vector2(0, -pip_size), pip_position + Vector2(pip_size, 0),
 				pip_position + Vector2(0, pip_size), pip_position + Vector2(-pip_size, 0),
 			])
 			draw_colored_polygon(pip, pip_color)
+		var playhead_x := 224.0 + float(current_step) * 10.0
+		draw_line(Vector2(playhead_x - 3.0, 123), Vector2(playhead_x + 3.0, 123), Color("ff9ab0"), 1.0)
 
 
 func _draw_spell_effects() -> void:
@@ -683,8 +703,20 @@ func _draw_pause() -> void:
 
 func _draw_result() -> void:
 	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(40, 43, 240, 76), Color(0.025, 0.02, 0.075, 0.96))
-	draw_rect(Rect2(40, 43, 240, 76), _feedback_color, false, 1.0)
-	draw_string(font, Vector2(56, 66), _result_text, HORIZONTAL_ALIGNMENT_CENTER, 208, 15, _feedback_color)
-	draw_string(font, Vector2(75, 86), "COMBO %02d   BOSS %02d/%02d" % [_battle.combo, _battle.boss_hp, _battle.MAX_BOSS_HP], HORIZONTAL_ALIGNMENT_CENTER, 170, 8, Color("dad7ff"))
-	draw_string(font, Vector2(93, 106), "R  BEGIN AGAIN", HORIZONTAL_ALIGNMENT_CENTER, 134, 8, Color("ffc45e"))
+	var panel := Rect2(32, 31, 256, 96)
+	draw_rect(panel, Color(0.025, 0.02, 0.075, 0.97))
+	draw_rect(panel, _feedback_color, false, 1.0)
+	draw_string(font, Vector2(48, 53), _result_text, HORIZONTAL_ALIGNMENT_CENTER, 224, 14, _feedback_color)
+	draw_string(font, Vector2(48, 72),
+		"CAST %02d/%02d   P%02d G%02d X%02d" % [
+			_performance.successful_cast_count, _performance.attempt_count,
+			_performance.perfect_cast_count, _performance.good_cast_count,
+			_performance.failed_cast_count,
+		], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("dad7ff"))
+	draw_string(font, Vector2(48, 89),
+		"INPUT %02d   AVG %03dMS  %s" % [
+			_performance.input_count, _performance.average_absolute_offset_ms(),
+			_performance.timing_bias(),
+		], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("aaa6cc"))
+	draw_string(font, Vector2(48, 105), "RANK %s   BOSS %02d/%02d" % [_performance.rank(), _battle.boss_hp, _battle.MAX_BOSS_HP], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("8d7dff"))
+	draw_string(font, Vector2(48, 121), "R  BEGIN AGAIN", HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Color("ffc45e"))

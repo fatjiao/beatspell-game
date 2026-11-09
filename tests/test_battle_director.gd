@@ -28,6 +28,12 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_damage(1), 1, "phase one attack is forgiving")
 	_expect_equal(failures, director.attack_damage(2), 2, "phase two attack is dangerous")
 	_expect_equal(failures, director.attack_damage(3), 2, "phase three stays survivable")
+	_expect_equal(failures, director.attack_pattern(8, 1), "standard", "teaching strike keeps the standard pulse")
+	_expect_equal(failures, director.attack_pattern(11, 2), "standard", "phase two begins with a readable standard attack")
+	_expect_equal(failures, director.attack_pattern(14, 2), "syncopated", "phase two alternates into a syncopated attack")
+	_expect_equal(failures, director.attack_pattern(9, 3), "syncopated", "phase three uses the syncopated attack")
+	_expect_equal(failures, director.attack_cue_steps(8, 1), [0, 2, 4, 6], "standard attack cues occupy quarter-note subdivisions")
+	_expect_equal(failures, director.attack_cue_steps(14, 2), [0, 3, 4, 7], "syncopated attack uses uneven eighth-note spacing")
 
 	_expect_equal(failures, director.attack_cue_index(15_999, 7, 1), -1, "safe bar has no warning cue")
 	_expect_equal(failures, director.attack_cue_index(16_000, 8, 1), 0, "attack warning starts on its first beat")
@@ -35,6 +41,11 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_cue_index(17_000, 8, 1), 2, "attack warning advances on beat three")
 	_expect_equal(failures, director.attack_cue_index(17_500, 8, 1), 3, "attack warning reaches the final beat")
 	_expect_equal(failures, director.attack_cue_index(18_000, 8, 1), -1, "attack warning ends at the bar boundary")
+	_expect_equal(failures, director.attack_cue_index(28_000, 14, 2), 0, "syncopated warning starts on subdivision zero")
+	_expect_equal(failures, director.attack_cue_index(28_500, 14, 2), 0, "syncopated warning holds through its first rest")
+	_expect_equal(failures, director.attack_cue_index(28_750, 14, 2), 1, "syncopated second cue lands on subdivision three")
+	_expect_equal(failures, director.attack_cue_index(29_000, 14, 2), 2, "syncopated third cue returns to a whole beat")
+	_expect_equal(failures, director.attack_cue_index(29_750, 14, 2), 3, "syncopated final cue lands just before impact")
 	return failures
 
 

@@ -14,8 +14,8 @@
 
 - 可玩主场景已切换到 Beatspell Boss 战。
 - 三种术式、实时早晚落点、错误输入标记、轨迹淡出、三阶段 Boss 和四拍攻击预警已经完成。
-- 14 个测试组通过。
-- Task 1 与 Task 2 已于 2026-11-09 完成；下一项是 Task 3 的 Boss 节奏变化设计。
+- 15 个测试组通过。
+- Task 1、Task 2 与 Task 3 已于 2026-11-09 完成；下一项是 Task 4 的垂直切片视觉整理。
 - 当前最大风险不是功能缺失，而是节奏手感、声音层次和攻击可读性尚未经过外部玩家验证。
 
 开发顺序遵循：**先手感，后内容；先可测量，后凭感觉调参；先做一场完整体验，后扩关。**
@@ -94,13 +94,17 @@ git add scripts/beatspell/beatspell_battle.gd tests/test_attack_cue_audio.gd tes
 git commit -m "tune: rebalance rhythm battle feedback audio"
 ```
 
-### Task 3: 增加一种 Boss 节奏变化，而不是增加新按键
+### Task 3: 增加 Boss 节奏变化与战局统计（已完成）
 
 **Files:**
 - Modify: `scripts/beatspell/battle_director.gd`
 - Modify: `tests/test_battle_director.gd`
 - Modify: `scripts/beatspell/beatspell_battle.gd`
 - Create: `docs/plans/2026-11-09-syncopated-boss-and-results-design.md`
+- Create: `scripts/beatspell/performance_tracker.gd`
+- Create: `tests/test_performance_tracker.gd`
+- Modify: `tests/test_attack_cue_audio.gd`
+- Modify: `tests/capture_beatspell_preview.gd`
 
 **Step 1: 先写一页设计**
 

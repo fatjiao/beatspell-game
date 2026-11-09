@@ -57,11 +57,31 @@ func _capture() -> void:
 		quit(1)
 		return
 
+	stage.set("_song_time_ms", 29_750)
+	stage.set("_bar_index", 14)
+	stage.set("_active_phase", 2)
+	stage.get("_battle").shield_active = false
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-syncopated-warning-preview.png"):
+		quit(1)
+		return
+
 	stage.set("_finished", true)
 	stage.set("_result_text", "BEAST DISPELLED")
 	stage.set("_feedback_color", Color("69f0a5"))
 	stage.get("_battle").boss_hp = 0
 	stage.set("_active_phase", 3)
+	var performance = stage.get("_performance")
+	performance.reset()
+	performance.record_input({"grade": "perfect", "offset_ms": -18})
+	performance.record_input({"grade": "perfect", "offset_ms": 24})
+	performance.record_input({"grade": "good", "offset_ms": 71})
+	performance.record_input({"grade": "miss", "offset_ms": 158})
+	performance.record_attempt("fireball", "perfect")
+	performance.record_attempt("heal", "good")
+	performance.record_attempt("", "miss")
 	stage.queue_redraw()
 	await process_frame
 	await process_frame

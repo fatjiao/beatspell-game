@@ -1,7 +1,10 @@
 extends RefCounted
 
 const BEAT_MS := 500
+const SUBDIVISION_MS := 250
 const BAR_MS := 2000
+const STANDARD_CUE_STEPS := [0, 2, 4, 6]
+const SYNCOPATED_CUE_STEPS := [0, 3, 4, 7]
 
 
 func tutorial_skill(bar_index: int) -> String:
@@ -45,10 +48,31 @@ func attack_damage(phase: int) -> int:
 	return 1 if phase <= 1 else 2
 
 
+func attack_pattern(bar_index: int, phase: int) -> String:
+	if bar_index == 8 or phase <= 1:
+		return "standard"
+	if phase == 2:
+		var attack_ordinal := int(floor(float(bar_index + 1) / 3.0))
+		return "syncopated" if attack_ordinal % 2 == 1 else "standard"
+	return "syncopated"
+
+
+func attack_cue_steps(bar_index: int, phase: int) -> Array:
+	var steps: Array = SYNCOPATED_CUE_STEPS if attack_pattern(bar_index, phase) == "syncopated" else STANDARD_CUE_STEPS
+	return steps.duplicate()
+
+
 func attack_cue_index(song_time_ms: int, bar_index: int, phase: int) -> int:
 	if not is_attack_bar(bar_index, phase):
 		return -1
 	var time_in_bar := song_time_ms - bar_index * BAR_MS
 	if time_in_bar < 0 or time_in_bar >= BAR_MS:
 		return -1
-	return clampi(int(floor(float(time_in_bar) / float(BEAT_MS))), 0, 3)
+	var current_step := clampi(int(floor(float(time_in_bar) / float(SUBDIVISION_MS))), 0, 7)
+	var cue_index := -1
+	var cue_steps := attack_cue_steps(bar_index, phase)
+	for index in cue_steps.size():
+		if current_step < int(cue_steps[index]):
+			break
+		cue_index = index
+	return cue_index

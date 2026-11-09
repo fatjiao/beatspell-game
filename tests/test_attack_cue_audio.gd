@@ -1,6 +1,7 @@
 extends RefCounted
 
 const AttackCueAudioScript = preload("res://scripts/beatspell/attack_cue_audio.gd")
+const BattleDirectorScript = preload("res://scripts/beatspell/battle_director.gd")
 const SfxProfileScript = preload("res://scripts/beatspell/sfx_profile.gd")
 
 
@@ -26,6 +27,15 @@ func run() -> Array[String]:
 	scheduler.reset()
 	var after_reset: Dictionary = scheduler.next_cue(12, 0)
 	_expect(failures, after_reset.should_play, "new runs reset warning deduplication")
+
+	var director = BattleDirectorScript.new()
+	scheduler.reset()
+	var sync_first: Dictionary = scheduler.next_cue(14, director.attack_cue_index(28_000, 14, 2))
+	var sync_rest: Dictionary = scheduler.next_cue(14, director.attack_cue_index(28_500, 14, 2))
+	var sync_second: Dictionary = scheduler.next_cue(14, director.attack_cue_index(28_750, 14, 2))
+	_expect(failures, sync_first.should_play, "syncopated first cue plays")
+	_expect(failures, not sync_rest.should_play, "syncopated rest subdivisions do not replay the previous cue")
+	_expect(failures, sync_second.should_play, "syncopated cue after a rest plays once")
 
 	var profile = SfxProfileScript.new()
 	_expect(failures, profile.volume_db("charge") < profile.volume_db("cast"), "step input is quieter than finish input")
