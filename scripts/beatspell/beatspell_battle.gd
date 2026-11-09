@@ -9,6 +9,8 @@ const SpellCommandBufferScript = preload("res://scripts/beatspell/spell_command_
 const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
+const SpritePose = preload("res://scripts/beatspell/sprite_pose.gd")
+const PracticeDirector = preload("res://scripts/beatspell/practice_director.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
@@ -54,11 +56,20 @@ var _timing = TimingProfileScript.new()
 var _command = SpellCommandBufferScript.new(_timing)
 var _music_players: Dictionary = {}
 var _sfx_players: Dictionary = {}
+var _options: Dictionary = {}
+var _settings_path := SettingsStore.SETTINGS_PATH
+var _options_open := false
+var _options_index := 0
+var _practice_mode := false
+var _practice = PracticeDirector.new()
+var _tutorial_casts := {"fireball": 0, "heal": 0, "shield": 0}
 var _audio_ready := false
 var _waiting_to_start := true
 var _song_start_ticks := 0
 var _song_time_ms := -2000
 var _music_started := false
+var _music_loop_offset_ms := 0
+var _last_raw_clock_ms := 0
 var _bar_index := -1
 var _active_phase := 1
 var _recent_command: Array = []
@@ -83,16 +94,18 @@ var _stage_shake_strength := 0.0
 
 
 func _ready() -> void:
-	_timing.input_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
+	_options = SettingsStore.load_settings(_settings_path)
+	_timing.input_offset_ms = int(_options.audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
+	_apply_options()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_show_title()
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	if _waiting_to_start:
+	if _waiting_to_start or _finished:
 		queue_redraw()
 		return
 	if _paused:
@@ -105,16 +118,11 @@ func _process(_delta: float) -> void:
 		if _song_time_ms >= 0 and _audio_ready:
 			_start_music()
 	else:
-		var clock: AudioStreamPlayer = _music_players["drums"]
-		_song_time_ms = int(maxf(0.0, (
-			clock.get_playback_position()
-			+ AudioServer.get_time_since_last_mix()
-			- AudioServer.get_output_latency()
-		) * 1000.0))
+		_song_time_ms = _read_song_clock()
 		_update_command()
 		_update_bar()
 		_update_attack_cue(_adjusted_song_time())
-		if _song_time_ms >= BATTLE_DURATION_MS and not _finished:
+		if _song_time_ms >= BATTLE_DURATION_MS and not _finished and not _practice_mode:
 			_finish_battle("RITUAL EXPIRED", false)
 	queue_redraw()
 
@@ -123,6 +131,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_key_press: bool = event is InputEventKey and event.pressed and not event.echo
 	var is_button_press: bool = event is InputEventJoypadButton and event.pressed
 	if not is_key_press and not is_button_press:
+		return
+	if _options_open:
+		if is_key_press:
+			_handle_options_input(event.physical_keycode)
+		get_viewport().set_input_as_handled()
+		return
+	if is_key_press and event.physical_keycode == KEY_O:
+		_open_options()
+		get_viewport().set_input_as_handled()
+		return
+	if _waiting_to_start and is_key_press and event.physical_keycode == KEY_T:
+		_start_run(true)
+		get_viewport().set_input_as_handled()
 		return
 	if is_key_press and event.physical_keycode == KEY_C:
 		get_tree().change_scene_to_file("res://scenes/settings/calibration.tscn")
@@ -140,7 +161,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if is_key_press and event.physical_keycode == KEY_R:
-		_start_run()
+		_start_run(_practice_mode)
 		get_viewport().set_input_as_handled()
 		return
 	if is_key_press and event.physical_keycode == KEY_P:
@@ -158,6 +179,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _show_title() -> void:
+	_options_open = false
+	_practice_mode = false
+	_clear_visual_effects()
+	for player in _sfx_players.values():
+		player.stop()
 	_waiting_to_start = true
 	_finished = false
 	_paused = false
@@ -177,11 +203,18 @@ func _show_title() -> void:
 	queue_redraw()
 
 
-func _start_run() -> void:
+func _start_run(practice: bool = false) -> void:
+	_overlay.reset_effects()
+	_practice_mode = practice
+	_practice.reset()
+	_tutorial_casts = {"fireball": 0, "heal": 0, "shield": 0}
+	_clear_visual_effects()
 	_waiting_to_start = false
 	_battle = BattleModelScript.new()
 	_song_start_ticks = Time.get_ticks_msec() + 2000
 	_song_time_ms = -2000
+	_music_loop_offset_ms = 0
+	_last_raw_clock_ms = 0
 	_music_started = false
 	_bar_index = -1
 	_active_phase = 1
@@ -230,6 +263,8 @@ func _update_bar() -> void:
 		if _finished:
 			return
 	_bar_index = new_bar
+	if _practice_mode:
+		return
 	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
 	if next_phase != _active_phase:
 		_active_phase = next_phase
@@ -248,6 +283,8 @@ func _update_command() -> void:
 
 
 func _register_action(action: String) -> void:
+	if _music_started and not _paused:
+		_song_time_ms = _read_song_clock()
 	var adjusted_time := _adjusted_song_time()
 	_update_command()
 	_update_bar()
@@ -271,7 +308,7 @@ func _register_action(action: String) -> void:
 		_play_sfx("error")
 		return
 	_cast_skill(result.skill, result.grade)
-	if _battle.is_victory():
+	if _battle.is_victory() and not _practice_mode:
 		_finish_battle("BEAST DISPELLED", true)
 
 
@@ -283,7 +320,14 @@ func _resolve_bar(resolved_bar: int) -> void:
 
 
 func _cast_skill(skill: String, grade: String) -> void:
+	_last_action = "cast"
+	_action_flash_until = Time.get_ticks_msec() + 150
 	var result: Dictionary = _battle.cast_spell(skill, grade)
+	_tutorial_casts[skill] += 1
+	if _practice_mode:
+		_practice.record_cast(skill)
+		_battle.player_hp = _battle.MAX_PLAYER_HP
+		_battle.boss_hp = _battle.MAX_BOSS_HP
 	_last_skill = skill
 	_skill_flash_until = Time.get_ticks_msec() + 620
 	_play_sfx(skill)
@@ -316,7 +360,7 @@ func _resolve_boss_attack() -> void:
 
 
 func _is_attack_bar(bar: int) -> bool:
-	return _director.is_attack_bar(bar, _active_phase)
+	return not _practice_mode and _director.is_attack_bar(bar, _active_phase)
 
 
 func _adjusted_song_time() -> int:
@@ -324,11 +368,15 @@ func _adjusted_song_time() -> int:
 
 
 func _trigger_stage_shake(strength: float, duration_ms: int) -> void:
+	if not bool(_options.get("screen_shake", true)):
+		return
 	_stage_shake_strength = maxf(_stage_shake_strength, strength)
 	_stage_shake_until = maxi(_stage_shake_until, Time.get_ticks_msec() + duration_ms)
 
 
 func _stage_shake_offset() -> Vector2:
+	if _paused or not bool(_options.get("screen_shake", true)):
+		return Vector2.ZERO
 	var remaining := _stage_shake_until - Time.get_ticks_msec()
 	if remaining <= 0:
 		_stage_shake_strength = 0.0
@@ -339,6 +387,8 @@ func _stage_shake_offset() -> Vector2:
 
 
 func _update_attack_cue(adjusted_time_ms: int) -> void:
+	if _practice_mode or _finished:
+		return
 	var cue_index: int = _director.attack_cue_index(adjusted_time_ms, _bar_index, _active_phase)
 	var cue: Dictionary = _attack_cue_audio.next_cue(_bar_index, cue_index)
 	if not cue.should_play:
@@ -389,10 +439,15 @@ func _toggle_pause() -> void:
 	if _paused:
 		_pause_started_ticks = Time.get_ticks_msec()
 		_overlay.show_pause()
-	elif not _music_started:
+	else:
+		var paused_duration := Time.get_ticks_msec() - _pause_started_ticks
+		for field in ["_action_flash_until", "_skill_flash_until", "_boss_hit_until", "_boss_attack_until", "_shield_flash_until", "_feedback_until", "_stage_shake_until"]:
+			if int(get(field)) > _pause_started_ticks:
+				set(field, int(get(field)) + paused_duration)
+	if not _paused and not _music_started:
 		_song_start_ticks += Time.get_ticks_msec() - _pause_started_ticks
 		_overlay.show_count_in(clampi(int(ceil(float(-_song_time_ms) / BEAT_MS)), 1, 4))
-	else:
+	elif not _paused:
 		_overlay.hide_primary()
 	for player in _music_players.values():
 		player.stream_paused = _paused
@@ -407,6 +462,7 @@ func _setup_music() -> bool:
 			_error_text = "MISSING MUSIC: %s" % instrument
 			ready = false
 			continue
+		stream.loop = true
 		var player := AudioStreamPlayer.new()
 		player.stream = stream
 		player.volume_db = MUSIC_VOLUMES[instrument]
@@ -538,16 +594,19 @@ func _draw_health() -> void:
 		for tick in 6:
 			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
 	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
+	if _practice_mode:
+		label = "PRACTICE / NO DAMAGE"
 	Art.pixel_text(self, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
 	draw_circle(Vector2(160, 19), 1.1, Art.GOLD)
 
 func _draw_player() -> void:
-	var now := Time.get_ticks_msec()
+	var now := _visual_now()
 	var breath := sin(float(now) / 550.0)
 	var lift := -2.0 if now < _action_flash_until else breath * 0.7
 	draw_ellipse_shadow(Vector2(58, 126), Vector2(24, 3))
 	var tint := Color(1.3, 1.15, 1.0) if now < _action_flash_until else Color.WHITE
-	draw_texture_rect(CASTER_ART, Rect2(24, roundf(39 + lift), 72, 96), false, tint)
+	var pose: Rect2 = SpritePose.caster(Rect2(24, roundf(39 + lift), 72, 96), now - (_action_flash_until - 150), _last_action)
+	draw_texture_rect(CASTER_ART, pose, false, tint)
 	if _battle.shield_active or now < _shield_flash_until:
 		draw_arc(Vector2(60, 86), 32, -1.45, 1.45, 48, Color(Art.TEAL, 0.85), 1.0, true)
 		draw_arc(Vector2(60, 86), 34, -1.3, 1.3, 48, Color(Art.TEAL, 0.2), 0.5, true)
@@ -566,7 +625,7 @@ func draw_ellipse_shadow(center: Vector2, extent: Vector2) -> void:
 	draw_colored_polygon(points, Color(0.005, 0.015, 0.02, 0.50))
 
 func _draw_boss() -> void:
-	var now := Time.get_ticks_msec()
+	var now := _visual_now()
 	var warning := _is_attack_bar(_bar_index) and not _finished
 	var bob := roundf(sin(float(maxi(0, _song_time_ms)) / 500.0 * PI) * 2.0)
 	var center := Vector2(259, 77 + bob)
@@ -582,7 +641,14 @@ func _draw_boss() -> void:
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, warning_color, 2.0)
 	draw_ellipse_shadow(Vector2(260, 128), Vector2(27, 3))
 	var tint := Color(1.5, 1.2, 1.0) if now < _boss_hit_until else Color.WHITE
-	draw_texture_rect(BOSS_ART, Rect2(center.x - 49, center.y - 47, 98, 93), false, tint)
+	var pose: Rect2 = SpritePose.boss(Rect2(center.x - 49, center.y - 47, 98, 93), now - (_boss_attack_until - 520), now - (_boss_hit_until - 420))
+	draw_texture_rect(BOSS_ART, pose, false, tint)
+	if now < _boss_hit_until:
+		var burst_progress := clampf(float(now - (_boss_hit_until - 420)) / 420.0, 0.0, 1.0)
+		for spark in 9:
+			var angle := float(spark) * TAU / 9.0
+			var point := center + Vector2(cos(angle), sin(angle)) * (10.0 + burst_progress * 29.0)
+			draw_rect(Rect2(point.round(), Vector2(2, 2)), Color(Art.GOLD, 1.0 - burst_progress))
 
 	if warning:
 		var warning_color := _attack_pattern_color()
@@ -624,7 +690,7 @@ func _attack_pattern_color() -> Color:
 
 
 func _draw_spell_effects() -> void:
-	var now := Time.get_ticks_msec()
+	var now := _visual_now()
 	if now < _skill_flash_until:
 		var progress := clampf(1.0 - float(_skill_flash_until - now) / 620.0, 0.0, 1.0)
 		match _last_skill:
@@ -727,7 +793,7 @@ func _draw_spell_cards() -> void:
 		var skill: String = skills[index]
 		var rect := Rect2(15 + index * 98, 141, 94, 27)
 		var active := _last_skill == skill and Time.get_ticks_msec() < _skill_flash_until
-		var teaching := _director.tutorial_skill(_bar_index) == skill and not _finished
+		var teaching := _teaching_skill() == skill and not _finished
 		var color: Color = colors[index]
 		Art.panel(self, rect, color, active or teaching)
 		Art.sigil(self, rect.position + Vector2(12, 13), skill, 7, color)
@@ -755,4 +821,90 @@ func _draw_feedback() -> void:
 
 func _draw_footer() -> void:
 	Art.pixel_text(self, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
-	Art.pixel_text(self, Vector2(192, 177), "P  PAUSE   R  RETRY   C  AUDIO", HORIZONTAL_ALIGNMENT_RIGHT, 112, 4, Art.MUTED)
+	if _practice_mode:
+		var focus: String = _practice.current_skill()
+		var hint := "FREE PRACTICE / ESC TITLE" if focus.is_empty() else "%s %d/2 / ESC TITLE" % [SKILL_NAMES[focus], _practice.counts[focus]]
+		Art.pixel_text(self, Vector2(183, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 121, 4, Art.GOLD)
+	else:
+		var focus: String = _teaching_skill()
+		var hint := "P PAUSE  O OPTIONS  R RETRY" if focus.is_empty() else "PRACTICE %s / CAST %d" % [SKILL_NAMES[focus], _tutorial_casts[focus]]
+		Art.pixel_text(self, Vector2(177, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 127, 4, Art.MUTED)
+
+func _teaching_skill() -> String:
+	return _practice.current_skill() if _practice_mode else _director.tutorial_skill(_bar_index)
+
+
+func _read_song_clock() -> int:
+	var clock: AudioStreamPlayer = _music_players.get("drums")
+	if clock == null:
+		return _song_time_ms
+	var raw_time := int(maxf(0.0, (clock.get_playback_position() + AudioServer.get_time_since_last_mix() - AudioServer.get_output_latency()) * 1000.0))
+	if raw_time < _last_raw_clock_ms - 1000:
+		_music_loop_offset_ms += int(round(clock.stream.get_length() * 1000.0))
+	_last_raw_clock_ms = raw_time
+	return _music_loop_offset_ms + raw_time
+
+
+func _clear_visual_effects() -> void:
+	_action_flash_until = 0
+	_skill_flash_until = 0
+	_boss_hit_until = 0
+	_boss_attack_until = 0
+	_shield_flash_until = 0
+	_stage_shake_until = 0
+	_last_action = ""
+	_last_skill = ""
+
+
+func _apply_options() -> void:
+	for instrument in _music_players:
+		_music_players[instrument].volume_db = MUSIC_VOLUMES[instrument] + _volume_gain(float(_options.music_volume))
+	for sound_name in _sfx_players:
+		_sfx_players[sound_name].volume_db = _sfx_profile.volume_db(sound_name) + _volume_gain(float(_options.sfx_volume))
+	if DisplayServer.get_name() != "headless":
+		var target_mode := DisplayServer.WINDOW_MODE_FULLSCREEN if _options.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+		if DisplayServer.window_get_mode() != target_mode:
+			DisplayServer.window_set_mode(target_mode)
+
+
+func _volume_gain(value: float) -> float:
+	return linear_to_db(value) if value > 0.0 else -80.0
+
+
+func _open_options() -> void:
+	if not _waiting_to_start and not _paused and not _finished:
+		_toggle_pause()
+	_options_open = true
+	_overlay.show_options(_options, _options_index)
+
+
+func _handle_options_input(key: int) -> void:
+	if key in [KEY_ESCAPE, KEY_O]:
+		_options_open = false
+		if _waiting_to_start:
+			_overlay.show_title()
+		elif _finished:
+			_overlay.show_result(_result_overlay_data())
+		else:
+			_overlay.show_pause()
+		return
+	if key == KEY_UP:
+		_options_index = posmod(_options_index - 1, 4)
+	elif key == KEY_DOWN:
+		_options_index = posmod(_options_index + 1, 4)
+	elif key in [KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_SPACE]:
+		var direction := -1.0 if key == KEY_LEFT else 1.0
+		var option: String = ["music_volume", "sfx_volume", "screen_shake", "fullscreen"][_options_index]
+		if _options_index < 2:
+			_options[option] = snappedf(clampf(float(_options[option]) + direction * 0.1, 0.0, 1.0), 0.1)
+		else:
+			_options[option] = not bool(_options[option])
+		_apply_options()
+		var save_error := SettingsStore.save_settings(_options, _settings_path)
+		if save_error != OK:
+			_show_feedback("SETTINGS SAVE FAILED", Art.EMBER, 2000)
+	_overlay.show_options(_options, _options_index)
+
+
+func _visual_now() -> int:
+	return _pause_started_ticks if _paused else Time.get_ticks_msec()

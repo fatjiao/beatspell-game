@@ -11,6 +11,8 @@ var phase_number := 0
 var phase_name := ""
 var phase_color := Art.GOLD
 var result_data: Dictionary = {}
+var options_data: Dictionary = {}
+var selected_option := 0
 
 var _phase_started_ticks := 0
 var _phase_until_ticks := 0
@@ -32,8 +34,22 @@ func _process(_delta: float) -> void:
 		queue_redraw()
 
 
+func show_options(data: Dictionary, selected: int) -> void:
+	mode = "options"
+	options_data = data.duplicate(true)
+	selected_option = selected
+	_request_redraw()
+
+
 func show_title() -> void:
+	reset_effects()
 	mode = "title"
+	_request_redraw()
+
+
+func reset_effects() -> void:
+	_phase_started_ticks = 0
+	_phase_until_ticks = 0
 	_request_redraw()
 
 
@@ -83,6 +99,8 @@ func _draw() -> void:
 			_draw_count_in()
 		"pause":
 			_draw_pause()
+		"options":
+			_draw_options()
 		"result":
 			_draw_result()
 	if _phase_until_ticks > Time.get_ticks_msec() and mode.is_empty():
@@ -106,7 +124,8 @@ func _draw_title() -> void:
 	Art.panel(self, Rect2(114, 123, 92, 23), Art.GOLD, true)
 	Art.pixel_text(self, Vector2(122, 138), "BEGIN RITUAL", HORIZONTAL_ALIGNMENT_CENTER, 76, 7, Art.IVORY)
 	Art.pixel_text(self, Vector2(117, 155), "J / K   ·   ENTER", HORIZONTAL_ALIGNMENT_CENTER, 86, 4, Art.GOLD)
-	Art.pixel_text(self, Vector2(80, 174), "C  AUDIO CALIBRATION     /     ESC  LEAVE", HORIZONTAL_ALIGNMENT_CENTER, 160, 4, Art.MUTED)
+	Art.pixel_text(self, Vector2(60, 167), "T PRACTICE / O OPTIONS / C CALIBRATE", HORIZONTAL_ALIGNMENT_CENTER, 200, 5, Art.MUTED)
+	Art.pixel_text(self, Vector2(100, 177), "ESC LEAVE", HORIZONTAL_ALIGNMENT_CENTER, 120, 4, Art.MUTED)
 
 
 func _draw_count_in() -> void:
@@ -120,7 +139,7 @@ func _draw_pause() -> void:
 	draw_rect(Rect2(0, 24, 320, 100), Color(0.02, 0.01, 0.06, 0.88))
 	Art.pixel_text(self, Vector2(100, 68), "PAUSED", HORIZONTAL_ALIGNMENT_CENTER, 120, 18, Color("ffffff"))
 	Art.pixel_text(self, Vector2(100, 88), "P  RESUME", HORIZONTAL_ALIGNMENT_CENTER, 120, 7, Art.IVORY)
-	Art.pixel_text(self, Vector2(100, 103), "ESC  TITLE", HORIZONTAL_ALIGNMENT_CENTER, 120, 6, Art.MUTED)
+	Art.pixel_text(self, Vector2(100, 103), "O OPTIONS / ESC TITLE", HORIZONTAL_ALIGNMENT_CENTER, 120, 6, Art.MUTED)
 
 
 func _draw_result() -> void:
@@ -155,3 +174,24 @@ func _draw_phase_flash() -> void:
 	var text_color := phase_color
 	text_color.a = alpha
 	Art.pixel_text(self, Vector2(64, 81), "PHASE %d · %s" % [phase_number, phase_name], HORIZONTAL_ALIGNMENT_CENTER, 192, 13, text_color)
+
+func _draw_options() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.92))
+	Art.panel(self, Rect2(49, 24, 222, 132), Art.GOLD, true)
+	Art.pixel_text(self, Vector2(68, 43), "OPTIONS", HORIZONTAL_ALIGNMENT_CENTER, 184, 12, Art.IVORY)
+	var labels := ["MUSIC", "SOUND FX", "SCREEN SHAKE", "FULLSCREEN"]
+	for index in 4:
+		var y := 65 + index * 19
+		if index == selected_option:
+			draw_rect(Rect2(59, y - 8, 202, 15), Color(Art.TEAL, 0.12))
+			Art.pixel_text(self, Vector2(62, y), ">", HORIZONTAL_ALIGNMENT_LEFT, 8, 6, Art.GOLD)
+		Art.pixel_text(self, Vector2(74, y), labels[index], HORIZONTAL_ALIGNMENT_LEFT, 112, 6, Art.IVORY)
+		var value := ""
+		if index < 2:
+			var setting: String = ["music_volume", "sfx_volume"][index]
+			value = "%d/10" % int(round(float(options_data.get(setting, 0.8)) * 10))
+		else:
+			var setting: String = ["screen_shake", "fullscreen"][index - 2]
+			value = "ON" if options_data.get(setting, index == 2) else "OFF"
+		Art.pixel_text(self, Vector2(201, y), value, HORIZONTAL_ALIGNMENT_CENTER, 42, 6, Art.TEAL)
+	Art.pixel_text(self, Vector2(65, 147), "ARROWS ADJUST / ESC BACK", HORIZONTAL_ALIGNMENT_CENTER, 190, 5, Art.MUTED)

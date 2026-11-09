@@ -6,7 +6,7 @@ $godotConsole = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_c
 $buildRoot = Join-Path $projectRoot 'build\BeatspellPlaytest'
 $packPath = Join-Path $buildRoot 'BeatspellPlaytest.pck'
 $runnerPath = Join-Path $buildRoot 'BeatspellPlaytest.exe'
-$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.1.2.zip'
+$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.2.0.zip'
 
 foreach ($required in @($godotGui, $godotConsole)) {
 	if (-not (Test-Path -LiteralPath $required)) {
@@ -20,6 +20,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 New-Item -ItemType Directory -Force -Path $buildRoot | Out-Null
+& $godotConsole --headless --path $projectRoot --script res://tests/test_playtest_flow.gd
+if ($LASTEXITCODE -ne 0) {
+	throw "Playtest flow integration failed with exit code $LASTEXITCODE"
+}
 foreach ($oldFile in @($packPath, $runnerPath, $archivePath)) {
 	if (Test-Path -LiteralPath $oldFile) {
 		Remove-Item -LiteralPath $oldFile -Force

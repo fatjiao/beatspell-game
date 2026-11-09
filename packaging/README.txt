@@ -1,4 +1,4 @@
-BEATSPELL INTERNAL PLAYTEST v0.1.2 - PIXEL ART
+BEATSPELL INTERNAL PLAYTEST v0.2.0 - PIXEL ART
 
 Double-click "Launch Beatspell.cmd" to start.
 
@@ -8,6 +8,9 @@ J / K       Finish spell / Start from title
 P           Pause
 R           Restart battle
 C           Audio calibration
+T           Practice mode (from title)
+O           Options (music, SFX, screen shake, fullscreen)
+Arrows      Adjust options; Esc closes options
 Esc         Return to title / Quit from title
 
 This portable internal build includes the Godot runner and does not require Godot to be installed.

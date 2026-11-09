@@ -1,5 +1,6 @@
 extends Control
 
+const Art = preload("res://scripts/beatspell/art_direction.gd")
 const CalibrationMath = preload("res://scripts/settings/calibration.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const MAIN_SCENE := "res://scenes/beatspell/beatspell_battle.tscn"
@@ -20,7 +21,8 @@ var _metronome: AudioStreamPlayer
 func _ready() -> void:
 	_metronome = AudioStreamPlayer.new()
 	_metronome.stream = _make_tone(880.0, 0.035)
-	_metronome.volume_db = -8.0
+	var sfx_level := float(SettingsStore.load_settings().sfx_volume)
+	_metronome.volume_db = -8.0 + (linear_to_db(sfx_level) if sfx_level > 0 else -80.0)
 	add_child(_metronome)
 	_restart()
 
@@ -80,10 +82,10 @@ func _restart() -> void:
 
 
 func _draw() -> void:
-	var font := ThemeDB.fallback_font
-	draw_rect(Rect2(Vector2.ZERO, size), Color("111025"))
-	draw_rect(Rect2(0, 0, size.x, 29), Color("1d1938"))
-	draw_string(font, Vector2(10, 19), "AUDIO CALIBRATION", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("d8d5ff"))
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	draw_rect(Rect2(Vector2.ZERO, size), Art.INK)
+	draw_rect(Rect2(0, 0, size.x, 29), Color("14262a"))
+	Art.pixel_text(self, Vector2(10, 19), "AUDIO CALIBRATION", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Art.IVORY)
 
 	var elapsed := Time.get_ticks_msec() - _start_ticks
 	var phase := 0.0
@@ -93,16 +95,16 @@ func _draw() -> void:
 	var radius := 16.0 + pulse * 14.0
 	var center := Vector2(size.x * 0.5, 82)
 	draw_circle(center, radius, Color(0.18, 0.89, 0.90, 0.12 + pulse * 0.25))
-	draw_circle(center, 13.0, Color("2de2e6") if Time.get_ticks_msec() < _flash_until else Color("3f3a6b"))
-	draw_string(font, center + Vector2(-4, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("111025"))
+	draw_circle(center, 13.0, Art.TEAL if Time.get_ticks_msec() < _flash_until else Color("3f3a6b"))
+	Art.pixel_text(self, center + Vector2(-4, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Art.INK)
 
 	if _finished:
-		draw_string(font, Vector2(52, 126), "CALIBRATION  %+d ms" % _result_ms, HORIZONTAL_ALIGNMENT_CENTER, 216, 14, Color("f9f871"))
-		draw_string(font, Vector2(50, 148), "ENTER  SAVE     R  RETRY", HORIZONTAL_ALIGNMENT_CENTER, 220, 8, Color("d8d5ff"))
+		Art.pixel_text(self, Vector2(52, 126), "CALIBRATION  %+d ms" % _result_ms, HORIZONTAL_ALIGNMENT_CENTER, 216, 14, Art.GOLD)
+		Art.pixel_text(self, Vector2(50, 148), "ENTER  SAVE     R  RETRY", HORIZONTAL_ALIGNMENT_CENTER, 220, 8, Art.IVORY)
 	else:
-		draw_string(font, Vector2(45, 124), "PRESS D WITH EACH CLICK", HORIZONTAL_ALIGNMENT_CENTER, 230, 10, Color.WHITE)
-		draw_string(font, Vector2(80, 145), "%d / %d TAPS" % [_samples.size(), TARGET_SAMPLES], HORIZONTAL_ALIGNMENT_CENTER, 160, 9, Color("9d98c7"))
-	draw_string(font, Vector2(10, 171), "ESC  BACK", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("7d789f"))
+		Art.pixel_text(self, Vector2(45, 124), "PRESS D WITH EACH CLICK", HORIZONTAL_ALIGNMENT_CENTER, 230, 10, Color.WHITE)
+		Art.pixel_text(self, Vector2(80, 145), "%d / %d TAPS" % [_samples.size(), TARGET_SAMPLES], HORIZONTAL_ALIGNMENT_CENTER, 160, 9, Color("9d98c7"))
+	Art.pixel_text(self, Vector2(10, 171), "ESC  BACK", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("7d789f"))
 
 
 func _make_tone(frequency: float, duration_seconds: float) -> AudioStreamWAV:

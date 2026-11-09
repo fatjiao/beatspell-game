@@ -136,6 +136,23 @@ func _capture() -> void:
 	if not _save_view("res://build/beatspell-defeat-preview.png"):
 		quit(1)
 		return
+	stage.call("_start_run", true)
+	stage.set("_song_time_ms", 2000)
+	stage.set("_bar_index", 1)
+	stage.get_node("BattleOverlay").hide_primary()
+	stage.call("_cast_skill", "fireball", "perfect")
+	stage.queue_redraw()
+	await create_timer(0.12).timeout
+	await process_frame
+	if not _save_view("res://build/beatspell-practice-preview.png"):
+		quit(1)
+		return
+	stage.call("_open_options")
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-options-preview.png"):
+		quit(1)
+		return
 	stage.queue_free()
 	await process_frame
 	print("Saved beatspell previews.")

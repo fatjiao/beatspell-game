@@ -42,6 +42,16 @@ func run() -> Array[String]:
 	)
 	_assert_equal(failures, parsed.audio_offset_ms, 85, "saved audio offset")
 	_assert_equal(failures, parsed.assist_mode, true, "saved assist mode")
+	_assert_equal(failures, parsed.music_volume, 0.8, "old settings gain audio defaults")
+	var invalid: Dictionary = settings_script.parse_settings_text('{"music_volume":2,"sfx_volume":-1,"screen_shake":"false","fullscreen":1}')
+	_assert_equal(failures, invalid.music_volume, 1.0, "music volume clamps high")
+	_assert_equal(failures, invalid.sfx_volume, 0.0, "SFX volume clamps low")
+	_assert_equal(failures, invalid.screen_shake, true, "invalid shake value uses default")
+	_assert_equal(failures, invalid.fullscreen, false, "invalid fullscreen value uses default")
+	var valid: Dictionary = settings_script.parse_settings_text('{"music_volume":0.3,"sfx_volume":0.6,"screen_shake":false,"fullscreen":true,"audio_offset_ms":85}')
+	_assert_equal(failures, valid.music_volume, 0.3, "music slider survives parsing")
+	_assert_equal(failures, valid.screen_shake, false, "shake can be disabled")
+	_assert_equal(failures, valid.audio_offset_ms, 85, "options preserve calibration")
 	return failures
 
 

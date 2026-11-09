@@ -4,6 +4,10 @@ const SETTINGS_PATH := "user://settings.json"
 const DEFAULTS := {
 	"audio_offset_ms": 0,
 	"assist_mode": false,
+	"music_volume": 0.8,
+	"sfx_volume": 0.8,
+	"screen_shake": true,
+	"fullscreen": false,
 }
 
 
@@ -45,4 +49,18 @@ static func _normalize(settings: Dictionary) -> Dictionary:
 	return {
 		"audio_offset_ms": clampi(int(offset), -300, 300),
 		"assist_mode": assist,
+		"music_volume": _volume(settings.get("music_volume", 0.8)),
+		"sfx_volume": _volume(settings.get("sfx_volume", 0.8)),
+		"screen_shake": _boolean(settings.get("screen_shake", true), true),
+		"fullscreen": _boolean(settings.get("fullscreen", false), false),
 	}
+
+
+static func _volume(value: Variant) -> float:
+	if not (value is int or value is float) or not is_finite(float(value)):
+		return 0.8
+	return clampf(float(value), 0.0, 1.0)
+
+
+static func _boolean(value: Variant, fallback: bool) -> bool:
+	return value if value is bool else fallback
