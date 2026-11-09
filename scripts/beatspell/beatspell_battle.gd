@@ -10,9 +10,9 @@ const TimingProfileScript = preload("res://scripts/beatspell/timing_profile.gd")
 const InputTraceFade = preload("res://scripts/beatspell/input_trace_fade.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
-const ARENA_ART = preload("res://assets/art/beatspell/observatory.png")
-const CASTER_ART = preload("res://assets/art/beatspell/caster.png")
-const BOSS_ART = preload("res://assets/art/beatspell/warden.png")
+const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
+const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
+const BOSS_ART = preload("res://assets/art/beatspell/pixel/warden.png")
 
 const BPM := TimingProfileScript.DEFAULT_BPM
 const BEAT_MS := TimingProfileScript.DEFAULT_BEAT_MS
@@ -86,7 +86,7 @@ func _ready() -> void:
 	_timing.input_offset_ms = int(SettingsStore.load_settings().audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
-	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_show_title()
 	queue_redraw()
 
@@ -507,9 +507,8 @@ func _draw() -> void:
 	_draw_feedback()
 	_draw_footer()
 	if not _error_text.is_empty():
-		var font := ThemeDB.fallback_font
 		draw_rect(Rect2(24, 72, 272, 34), Color(0.06, 0.03, 0.08, 0.95))
-		draw_string(font, Vector2(32, 93), _error_text, HORIZONTAL_ALIGNMENT_CENTER, 256, 9, Color("ff668e"))
+		Art.pixel_text(self, Vector2(32, 93), _error_text, HORIZONTAL_ALIGNMENT_CENTER, 256, 9, Color("ff668e"))
 
 
 func _draw_arena() -> void:
@@ -527,9 +526,8 @@ func _draw_arena() -> void:
 		draw_circle(point, 0.35, Color(Art.GOLD, 0.28))
 
 func _draw_health() -> void:
-	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(16, 10), "THE CASTER", HORIZONTAL_ALIGNMENT_LEFT, 90, 5, Art.IVORY)
-	draw_string(font, Vector2(214, 10), "RESONANT WARDEN", HORIZONTAL_ALIGNMENT_RIGHT, 90, 5, Art.IVORY)
+	Art.pixel_text(self, Vector2(16, 10), "THE CASTER", HORIZONTAL_ALIGNMENT_LEFT, 90, 5, Art.IVORY)
+	Art.pixel_text(self, Vector2(214, 10), "RESONANT WARDEN", HORIZONTAL_ALIGNMENT_RIGHT, 90, 5, Art.IVORY)
 	for side in 2:
 		var x := 16.0 if side == 0 else 214.0
 		var fraction := float(_battle.player_hp) / float(_battle.MAX_PLAYER_HP) if side == 0 else float(_battle.boss_hp) / float(_battle.MAX_BOSS_HP)
@@ -540,7 +538,7 @@ func _draw_health() -> void:
 		for tick in 6:
 			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
 	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
-	draw_string(font, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
+	Art.pixel_text(self, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
 	draw_circle(Vector2(160, 19), 1.1, Art.GOLD)
 
 func _draw_player() -> void:
@@ -549,7 +547,7 @@ func _draw_player() -> void:
 	var lift := -2.0 if now < _action_flash_until else breath * 0.7
 	draw_ellipse_shadow(Vector2(58, 126), Vector2(24, 3))
 	var tint := Color(1.3, 1.15, 1.0) if now < _action_flash_until else Color.WHITE
-	draw_texture_rect(CASTER_ART, Rect2(15, 36 + lift, 88, 96), false, tint)
+	draw_texture_rect(CASTER_ART, Rect2(24, roundf(39 + lift), 72, 96), false, tint)
 	if _battle.shield_active or now < _shield_flash_until:
 		draw_arc(Vector2(60, 86), 32, -1.45, 1.45, 48, Color(Art.TEAL, 0.85), 1.0, true)
 		draw_arc(Vector2(60, 86), 34, -1.3, 1.3, 48, Color(Art.TEAL, 0.2), 0.5, true)
@@ -570,7 +568,7 @@ func draw_ellipse_shadow(center: Vector2, extent: Vector2) -> void:
 func _draw_boss() -> void:
 	var now := Time.get_ticks_msec()
 	var warning := _is_attack_bar(_bar_index) and not _finished
-	var bob := sin(float(maxi(0, _song_time_ms)) / 500.0 * PI) * 2.0
+	var bob := roundf(sin(float(maxi(0, _song_time_ms)) / 500.0 * PI) * 2.0)
 	var center := Vector2(259, 77 + bob)
 	if now < _boss_hit_until:
 		center.x += -3.0 if now % 2 == 0 else 3.0
@@ -723,7 +721,6 @@ func _draw_beat_ring() -> void:
 
 
 func _draw_spell_cards() -> void:
-	var font := ThemeDB.fallback_font
 	var skills := ["fireball", "shield", "heal"]
 	var colors := [Art.EMBER, Art.TEAL, Color("b3c68f")]
 	for index in 3:
@@ -734,7 +731,7 @@ func _draw_spell_cards() -> void:
 		var color: Color = colors[index]
 		Art.panel(self, rect, color, active or teaching)
 		Art.sigil(self, rect.position + Vector2(12, 13), skill, 7, color)
-		draw_string(font, rect.position + Vector2(24, 10), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 65, 6, Art.IVORY)
+		Art.pixel_text(self, rect.position + Vector2(24, 10), SKILL_NAMES[skill], HORIZONTAL_ALIGNMENT_LEFT, 65, 6, Art.IVORY)
 		var pattern: Array = DISPLAY_PATTERNS[skill]
 		for tick in 3:
 			draw_circle(rect.position + Vector2(27 + tick * 12, 19), 0.7, Color(Art.GOLD, 0.35))
@@ -744,20 +741,18 @@ func _draw_spell_cards() -> void:
 				draw_circle(point, 1.7, Art.GOLD)
 			else:
 				draw_colored_polygon(PackedVector2Array([point + Vector2(0, -2.4), point + Vector2(2.4, 0), point + Vector2(0, 2.4), point + Vector2(-2.4, 0)]), Art.TEAL)
-		draw_string(font, rect.position + Vector2(64, 20), SKILL_EFFECTS[skill], HORIZONTAL_ALIGNMENT_RIGHT, 25, 4, color)
+		Art.pixel_text(self, rect.position + Vector2(64, 20), SKILL_EFFECTS[skill], HORIZONTAL_ALIGNMENT_RIGHT, 25, 4, color)
 
 func _draw_feedback() -> void:
 	if _finished:
 		return
 	if Time.get_ticks_msec() >= _feedback_until and _song_time_ms >= 0:
 		return
-	var font := ThemeDB.fallback_font
 	var text := _feedback
 	draw_rect(Rect2(107, 29, 106, 12), Color(0.02, 0.045, 0.05, 0.8))
-	draw_string(font, Vector2(109, 37), text, HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Art.IVORY)
+	Art.pixel_text(self, Vector2(109, 37), text, HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Art.IVORY)
 
 
 func _draw_footer() -> void:
-	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
-	draw_string(font, Vector2(192, 177), "P  PAUSE   R  RETRY   C  AUDIO", HORIZONTAL_ALIGNMENT_RIGHT, 112, 4, Art.MUTED)
+	Art.pixel_text(self, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
+	Art.pixel_text(self, Vector2(192, 177), "P  PAUSE   R  RETRY   C  AUDIO", HORIZONTAL_ALIGNMENT_RIGHT, 112, 4, Art.MUTED)

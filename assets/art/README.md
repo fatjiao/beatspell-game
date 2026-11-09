@@ -2,7 +2,7 @@
 
 The two prototype art assets in this folder were generated with OpenAI's built-in image generation tool on 2026-11-05. They are original AI-generated prototype material and contain no third-party logos or readable text.
 
-The current Beatspell arena and characters use three painted assets generated with the built-in imagegen tool on 2026-11-09. See [Beatspell art and complete prompts](beatspell/README.md). HUD ornaments, sigils and timing feedback are procedural GDScript. No external font binaries are redistributed.
+The active Beatspell arena and characters use three 16-bit pixel assets generated with the built-in imagegen tool on 2026-11-09. See [pixel assets and complete prompts](beatspell/pixel/README.md). The painted v0.1.1 assets are superseded historical material. HUD ornaments, sigils and 3×5/5×7 bitmap lettering are procedural GDScript. No external font binaries are redistributed.
 
 ## Underground passage
 

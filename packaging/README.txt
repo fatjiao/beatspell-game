@@ -1,4 +1,4 @@
-BEATSPELL INTERNAL PLAYTEST v0.1.1
+BEATSPELL INTERNAL PLAYTEST v0.1.2 - PIXEL ART
 
 Double-click "Launch Beatspell.cmd" to start.
 

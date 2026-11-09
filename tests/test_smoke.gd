@@ -3,6 +3,10 @@ extends RefCounted
 
 func run() -> Array[String]:
 	var failures: Array[String] = []
+	if ProjectSettings.get_setting("display/window/stretch/mode") != "viewport":
+		failures.append("pixel art must render at the fixed low-resolution viewport")
+	if ProjectSettings.get_setting("display/window/stretch/scale_mode") != "integer":
+		failures.append("pixel art must scale by whole-number multiples")
 	if Engine.get_version_info().get("major", 0) < 4:
 		failures.append("Godot 4 or newer is required")
 	if not InputMap.has_action("battle_charge"):

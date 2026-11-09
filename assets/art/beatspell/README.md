@@ -1,5 +1,7 @@
 # Beatspell — Observatory art pass
 
+**Superseded:** these painted images belong to the withdrawn v0.1.1 visual direction. Active scenes now use the 16-bit pixel assets in [pixel/](pixel/README.md). Keep the game pixel art in future work.
+
 Created 2026-11-09 with the built-in imagegen tool. Three original generated assets are used by the battle and title screens. Caster and Warden retain their generated alpha transparency. Images were copied into this folder without raster editing.
 
 - `observatory.png`: moonlit ruined observatory background.
