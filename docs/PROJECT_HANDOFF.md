@@ -4,7 +4,9 @@
 
 当前版本为 `v0.3.2-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。背景和标题素材位于 `assets/art/beatspell/pixel/`，战斗使用 `pixel/poses/` 下六张独立姿态帧。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.3.2.zip`。
 
-最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。在线图像工具仍连接失败，用户要求尝试其他办法后，改用 `tools/build_pose_frames.gd` 在原素材上本地编辑手臂、法球、披风与守卫前爪，产出六张实际 PNG；不能把它们描述为在线图像服务的新生成结果。运行方法见 `assets/art/beatspell/pixel/poses/README.md`。
+最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。角色动作在图像工具连接失败期间改用 `tools/build_pose_frames.gd` 本地编辑原素材，产出六张实际 PNG；运行方法见 `assets/art/beatspell/pixel/poses/README.md`。随后在线图像连接已恢复并通过真实生成验证，但这六张已接入素材仍为本地派生图，不能改写它们的来源记录。
+
+玩法详细文档：[在线 Page](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)，仓库副本为 `docs/GAMEPLAY.md`。用户明确要求后续开发同步整理详细玩法；相关规则已写入根目录 `AGENTS.md`。每批涉及玩法和数值的变更都要更新两处，在线编辑前先读取并保留用户修改；同步失败时明确记录待同步部分。此要求适用于开发交付，不是后台定时任务。
 
 本批加入精准格挡、三格破防、四连击共鸣、H 术式手册和练习中的 T 无伤害防御训练。规则与有效伤害/治疗账本均在 `battle_model.gd`；精准格挡要求场景提供输入与攻击的音乐时间，不使用墙钟。Boss 生命值现为 60，教学九小节固定第一阶段。
 
@@ -147,8 +149,9 @@ git status
 
 1. `README.md`
 2. 本文档
-3. `docs/plans/2026-11-05-beatspell-next-steps.md`
-4. `docs/adr/0001-deterministic-rhythm-battle-core.md`
+3. `docs/GAMEPLAY.md` 与其中对应的在线玩法文档
+4. `docs/plans/2026-11-05-beatspell-next-steps.md`
+5. `docs/adr/0001-deterministic-rhythm-battle-core.md`
 
 以下文档记录了演进过程，但部分规则已被后续方案替代：
 
@@ -185,7 +188,7 @@ git push -u origin feature/short-name
 可直接复制下面这段：
 
 ```text
-这是 Beatspell Godot 项目。请先完整阅读 README.md、docs/PROJECT_HANDOFF.md、docs/plans/2026-11-05-beatspell-next-steps.md 和 docs/adr/0001-deterministic-rhythm-battle-core.md，再检查 git status 与最近提交。当前主线是节奏施法 Boss 战，不是旧的“一个人的乐队”原型。保持公共节拍环持续运行、玩家可在任意整拍起手、输入显示实时早晚位置、界面不直接提示下一键。修改前先确认当前行为，修改纯逻辑时补测试，完成后运行 tests/run_tests.gd，并提交和推送到 GitHub。
+这是 Beatspell Godot 项目。请先完整阅读 AGENTS.md、README.md、docs/PROJECT_HANDOFF.md、docs/GAMEPLAY.md、docs/plans/2026-11-05-beatspell-next-steps.md 和 docs/adr/0001-deterministic-rhythm-battle-core.md，再检查 git status 与最近提交。当前主线是节奏施法 Boss 战，不是旧的“一个人的乐队”原型。保持公共节拍环持续运行、玩家可在任意整拍起手、输入显示实时早晚位置、界面不直接提示下一键。修改前先确认当前行为，修改纯逻辑时补测试，完成后运行 tests/run_tests.gd。每批玩法开发同步更新 docs/GAMEPLAY.md 和接力指南链接的同一份在线玩法 Page，保留用户编辑，最后提交和推送到 GitHub。
 ```
 
 ## 8. 发布前仍需处理
