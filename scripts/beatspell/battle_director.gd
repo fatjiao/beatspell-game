@@ -71,8 +71,8 @@ func attack_cue_steps(bar_index: int, phase: int) -> Array:
 	return steps.duplicate()
 
 
-func attack_cue_index(song_time_ms: int, bar_index: int, phase: int) -> int:
-	if not is_attack_bar(bar_index, phase):
+func attack_cue_index(song_time_ms: int, bar_index: int, phase: int, force_attack: bool = false) -> int:
+	if not force_attack and not is_attack_bar(bar_index, phase):
 		return -1
 	var time_in_bar := song_time_ms - bar_index * BAR_MS
 	if time_in_bar < 0 or time_in_bar >= BAR_MS:

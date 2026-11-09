@@ -32,8 +32,23 @@ func _run() -> void:
 					stage.call("_register_action", action)
 				time_ms += 500
 	_check(stage.get("_practice").current_skill().is_empty(), "six casts unlock free practice")
-	_check(stage.get("_battle").boss_hp == 36, "practice restores target health")
+	_check(stage.get("_battle").boss_hp == stage.get("_battle").MAX_BOSS_HP, "practice restores target health")
 	_check(stage.get("_performance").successful_cast_count == 6, "practice casts reach performance statistics")
+	var drill_key := InputEventKey.new()
+	drill_key.physical_keycode = KEY_T
+	drill_key.pressed = true
+	stage.call("_unhandled_input", drill_key)
+	_check(stage.get("_practice_defense") and stage.call("_is_attack_bar", 1), "T unlocks defense drill after lessons")
+	for bar in [1, 3]:
+		stage.set("_bar_index", bar)
+		stage.set("_song_time_ms", (bar + 1) * 2000 - 500)
+		stage.call("_cast_skill", "shield", "perfect")
+		stage.call("_resolve_bar", bar)
+	_check(stage.get("_battle").perfect_guards == 2, "scene passes impact timestamps into perfect guard")
+	_check(stage.get("_battle").exposed and stage.get("_battle").break_count == 1, "two precise guards expose drill target")
+	_check(stage.get("_battle").player_hp == 5, "defense drill never damages player")
+	stage.call("_cast_skill", "fireball", "perfect")
+	_check(not stage.get("_battle").exposed, "next scene fireball consumes exposure")
 	stage.call("_open_options")
 	_check(stage.get("_paused"), "opening options pauses the battle")
 	_check(stage.get_node("BattleOverlay").mode == "options", "options overlay appears")
@@ -47,10 +62,23 @@ func _run() -> void:
 	_check(not stage.get("_paused"), "battle resumes from pause")
 	stage.call("_show_title")
 	_check(stage.get("_waiting_to_start") and not stage.get("_practice_mode"), "returning to title clears practice")
+	var help_key := InputEventKey.new()
+	help_key.physical_keycode = KEY_H
+	help_key.pressed = true
+	stage.call("_unhandled_input", help_key)
+	_check(stage.get_node("BattleOverlay").mode == "guide", "H opens spellbook")
+	stage.call("_unhandled_input", help_key)
+	_check(stage.get_node("BattleOverlay").mode == "title", "closing spellbook restores title")
 	stage.call("_start_run")
 	_check(not stage.get("_practice_mode"), "normal battle starts after practice")
 	_check(stage.get("_performance").input_count == 0, "new battle clears previous statistics")
-	stage.call("_finish_battle", "TEST RESULT", false)
+	stage.get("_battle").boss_hp = 3
+	stage.get("_battle").exposed = true
+	stage.set("_song_time_ms", 0)
+	stage.call("_register_action", "charge")
+	stage.set("_song_time_ms", 500)
+	stage.call("_register_action", "cast")
+	_check(stage.get("_finished") and stage.get("_battle").is_victory(), "bonus fireball win reaches scene result")
 	_check(stage.get_node("BattleOverlay").mode == "result", "result overlay follows finish")
 	stage.queue_free()
 	await process_frame

@@ -6,7 +6,7 @@ $godotConsole = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_c
 $buildRoot = Join-Path $projectRoot 'build\BeatspellPlaytest'
 $packPath = Join-Path $buildRoot 'BeatspellPlaytest.pck'
 $runnerPath = Join-Path $buildRoot 'BeatspellPlaytest.exe'
-$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.2.0.zip'
+$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.3.0.zip'
 
 foreach ($required in @($godotGui, $godotConsole)) {
 	if (-not (Test-Path -LiteralPath $required)) {

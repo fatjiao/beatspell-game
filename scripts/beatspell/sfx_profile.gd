@@ -1,6 +1,7 @@
 extends RefCounted
 
 const VOLUME_DB := {
+	"parry": -4.0,
 	"charge": -17.0,
 	"cast": -13.0,
 	"count": -14.0,
@@ -14,6 +15,7 @@ const VOLUME_DB := {
 }
 
 const DURATION_SECONDS := {
+	"parry": 0.18,
 	"charge": 0.055,
 	"cast": 0.075,
 	"count": 0.035,
@@ -27,6 +29,7 @@ const DURATION_SECONDS := {
 }
 
 const SAMPLE_GAIN := {
+	"parry": 0.32,
 	"charge": 0.20,
 	"cast": 0.24,
 	"count": 0.23,

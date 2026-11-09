@@ -41,6 +41,11 @@ func show_options(data: Dictionary, selected: int) -> void:
 	_request_redraw()
 
 
+func show_guide() -> void:
+	mode = "guide"
+	_request_redraw()
+
+
 func show_title() -> void:
 	reset_effects()
 	mode = "title"
@@ -101,6 +106,8 @@ func _draw() -> void:
 			_draw_pause()
 		"options":
 			_draw_options()
+		"guide":
+			_draw_guide()
 		"result":
 			_draw_result()
 	if _phase_until_ticks > Time.get_ticks_msec() and mode.is_empty():
@@ -125,7 +132,7 @@ func _draw_title() -> void:
 	Art.pixel_text(self, Vector2(122, 138), "BEGIN RITUAL", HORIZONTAL_ALIGNMENT_CENTER, 76, 7, Art.IVORY)
 	Art.pixel_text(self, Vector2(117, 155), "J / K   ·   ENTER", HORIZONTAL_ALIGNMENT_CENTER, 86, 4, Art.GOLD)
 	Art.pixel_text(self, Vector2(60, 167), "T PRACTICE / O OPTIONS / C CALIBRATE", HORIZONTAL_ALIGNMENT_CENTER, 200, 5, Art.MUTED)
-	Art.pixel_text(self, Vector2(100, 177), "ESC LEAVE", HORIZONTAL_ALIGNMENT_CENTER, 120, 4, Art.MUTED)
+	Art.pixel_text(self, Vector2(100, 177), "H SPELLBOOK / ESC LEAVE", HORIZONTAL_ALIGNMENT_CENTER, 120, 4, Art.MUTED)
 
 
 func _draw_count_in() -> void:
@@ -144,24 +151,21 @@ func _draw_pause() -> void:
 
 func _draw_result() -> void:
 	var color: Color = result_data.get("color", Color("69f0a5"))
-	var panel := Rect2(32, 31, 256, 96)
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.62))
-	Art.panel(self, panel, Art.GOLD, true)
-	Art.pixel_text(self, Vector2(48, 53), String(result_data.get("title", "RUN COMPLETE")), HORIZONTAL_ALIGNMENT_CENTER, 224, 14, color)
-	Art.pixel_text(self, Vector2(48, 72), "CAST %02d/%02d   P%02d G%02d X%02d" % [
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.72))
+	Art.panel(self, Rect2(32, 24, 256, 132), Art.GOLD, true)
+	Art.pixel_text(self, Vector2(48, 46), String(result_data.get("title", "RUN COMPLETE")), HORIZONTAL_ALIGNMENT_CENTER, 224, 14, color)
+	Art.pixel_text(self, Vector2(48, 63), "CAST %02d/%02d   P%02d G%02d X%02d" % [
 		int(result_data.get("successful_casts", 0)), int(result_data.get("attempts", 0)),
-		int(result_data.get("perfect_casts", 0)), int(result_data.get("good_casts", 0)),
-		int(result_data.get("failed_casts", 0)),
+		int(result_data.get("perfect_casts", 0)), int(result_data.get("good_casts", 0)), int(result_data.get("failed_casts", 0)),
 	], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.IVORY)
-	Art.pixel_text(self, Vector2(48, 89), "INPUT %02d   AVG %03dMS  %s" % [
-		int(result_data.get("inputs", 0)), int(result_data.get("average_offset_ms", 0)),
-		String(result_data.get("timing_bias", "ON TIME")),
-	], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.MUTED)
-	Art.pixel_text(self, Vector2(48, 105), "RANK %s   BOSS %02d/%02d" % [
-		String(result_data.get("rank", "C")), int(result_data.get("boss_hp", 0)),
-		int(result_data.get("boss_max_hp", 36)),
-	], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.GOLD)
-	Art.pixel_text(self, Vector2(48, 121), "R  AGAIN   ESC  TITLE", HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.GOLD)
+	Art.pixel_text(self, Vector2(48, 78), "AVG %03dMS %s / RANK %s" % [
+		int(result_data.get("average_offset_ms", 0)), String(result_data.get("timing_bias", "ON TIME")), String(result_data.get("rank", "C")),
+	], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
+	draw_line(Vector2(55, 85), Vector2(265, 85), Color(Art.GOLD, 0.3), 1)
+	Art.pixel_text(self, Vector2(48, 98), "MAX COMBO %02d / DAMAGE %02d" % [int(result_data.get("max_combo", 0)), int(result_data.get("damage", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.GOLD)
+	Art.pixel_text(self, Vector2(48, 112), "BLOCK %02d / PERFECT %02d / BREAK %02d" % [int(result_data.get("blocks", 0)), int(result_data.get("perfect_guards", 0)), int(result_data.get("breaks", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.TEAL)
+	Art.pixel_text(self, Vector2(48, 126), "HEAL %02d / TIME %02dS / BOSS %02d" % [int(result_data.get("healing", 0)), int(result_data.get("duration_seconds", 0)), int(result_data.get("boss_hp", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
+	Art.pixel_text(self, Vector2(48, 148), "R AGAIN / H SPELLBOOK / ESC TITLE", HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.IVORY)
 
 
 func _draw_phase_flash() -> void:
@@ -195,3 +199,21 @@ func _draw_options() -> void:
 			value = "ON" if options_data.get(setting, index == 2) else "OFF"
 		Art.pixel_text(self, Vector2(201, y), value, HORIZONTAL_ALIGNMENT_CENTER, 42, 6, Art.TEAL)
 	Art.pixel_text(self, Vector2(65, 147), "ARROWS ADJUST / ESC BACK", HORIZONTAL_ALIGNMENT_CENTER, 190, 5, Art.MUTED)
+
+func _draw_guide() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.95))
+	Art.panel(self, Rect2(26, 17, 268, 145), Art.GOLD, true)
+	Art.pixel_text(self, Vector2(48, 37), "SPELLBOOK", HORIZONTAL_ALIGNMENT_CENTER, 224, 12, Art.IVORY)
+	var lines := [
+		"FLARE: STEP / CAST",
+		"MEND:  STEP / STEP / CAST",
+		"AEGIS: STEP / REST / CAST",
+		"ONE SYMBOL PER WHOLE BEAT",
+		"PERFECT AEGIS ON LAST BEAT: GUARD",
+		"BLOCK 1 / GUARD 2 / BREAK AT 3",
+		"BREAK: NEXT FLARE +2 DAMAGE",
+		"4 CAST COMBO: NEXT FLARE +1",
+	]
+	for index in lines.size():
+		Art.pixel_text(self, Vector2(48, 53 + index * 11), lines[index], HORIZONTAL_ALIGNMENT_LEFT, 224, 6, Art.TEAL if index < 3 else Art.MUTED)
+	Art.pixel_text(self, Vector2(48, 153), "H / ESC BACK", HORIZONTAL_ALIGNMENT_CENTER, 224, 5, Art.GOLD)

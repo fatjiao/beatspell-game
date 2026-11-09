@@ -20,6 +20,8 @@ func run() -> Array[String]:
 		var battle_scene = packed_scene.instantiate() if packed_scene != null else null
 		if battle_scene == null:
 			failures.append("beatspell battle scene cannot be instantiated")
+		elif battle_scene.get_script() == null or not battle_scene.has_method("_start_run"):
+			failures.append("beatspell main script failed to compile")
 		elif not battle_scene.has_node("BattleOverlay"):
 			failures.append("beatspell battle overlay is missing")
 		if battle_scene != null:

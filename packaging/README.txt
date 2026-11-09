@@ -1,4 +1,4 @@
-BEATSPELL INTERNAL PLAYTEST v0.2.0 - PIXEL ART
+BEATSPELL INTERNAL PLAYTEST v0.3.0 - PIXEL ART
 
 Double-click "Launch Beatspell.cmd" to start.
 
@@ -9,6 +9,8 @@ P           Pause
 R           Restart battle
 C           Audio calibration
 T           Practice mode (from title)
+T           Toggle defense drill after completing practice lessons
+H           Spellbook (pauses battle)
 O           Options (music, SFX, screen shake, fullscreen)
 Arrows      Adjust options; Esc closes options
 Esc         Return to title / Quit from title

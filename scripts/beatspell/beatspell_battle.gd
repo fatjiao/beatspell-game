@@ -59,8 +59,11 @@ var _sfx_players: Dictionary = {}
 var _options: Dictionary = {}
 var _settings_path := SettingsStore.SETTINGS_PATH
 var _options_open := false
+var _guide_open := false
 var _options_index := 0
 var _practice_mode := false
+var _practice_defense := false
+var _break_flash_until := 0
 var _practice = PracticeDirector.new()
 var _tutorial_casts := {"fireball": 0, "heal": 0, "shield": 0}
 var _audio_ready := false
@@ -132,13 +135,32 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_button_press: bool = event is InputEventJoypadButton and event.pressed
 	if not is_key_press and not is_button_press:
 		return
+	if _guide_open:
+		if is_key_press and event.physical_keycode in [KEY_H, KEY_ESCAPE]:
+			_guide_open = false
+			_restore_menu_overlay()
+		get_viewport().set_input_as_handled()
+		return
 	if _options_open:
 		if is_key_press:
 			_handle_options_input(event.physical_keycode)
 		get_viewport().set_input_as_handled()
 		return
+	if is_key_press and event.physical_keycode == KEY_H:
+		if not _waiting_to_start and not _paused and not _finished:
+			_toggle_pause()
+		_guide_open = true
+		_overlay.show_guide()
+		get_viewport().set_input_as_handled()
+		return
 	if is_key_press and event.physical_keycode == KEY_O:
 		_open_options()
+		get_viewport().set_input_as_handled()
+		return
+	if _practice_mode and is_key_press and event.physical_keycode == KEY_T and _practice.current_skill().is_empty():
+		_practice_defense = not _practice_defense
+		_battle.shield_active = false
+		_show_feedback("DEFENSE DRILL" if _practice_defense else "FREE PRACTICE", Art.GOLD, 1500)
 		get_viewport().set_input_as_handled()
 		return
 	if _waiting_to_start and is_key_press and event.physical_keycode == KEY_T:
@@ -179,8 +201,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _show_title() -> void:
+	_guide_open = false
 	_options_open = false
 	_practice_mode = false
+	_practice_defense = false
 	_clear_visual_effects()
 	for player in _sfx_players.values():
 		player.stop()
@@ -206,6 +230,7 @@ func _show_title() -> void:
 func _start_run(practice: bool = false) -> void:
 	_overlay.reset_effects()
 	_practice_mode = practice
+	_practice_defense = false
 	_practice.reset()
 	_tutorial_casts = {"fireball": 0, "heal": 0, "shield": 0}
 	_clear_visual_effects()
@@ -266,6 +291,8 @@ func _update_bar() -> void:
 	if _practice_mode:
 		return
 	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
+	if _bar_index < 9:
+		next_phase = 1
 	if next_phase != _active_phase:
 		_active_phase = next_phase
 		var phase_color := Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
@@ -278,6 +305,7 @@ func _update_command() -> void:
 		return
 	var adjusted_time := _adjusted_song_time()
 	if _command.expire_if_needed(adjusted_time):
+		_battle.break_combo()
 		_show_feedback("LOST THE PHRASE", Color("ff668e"), 620)
 		_play_sfx("error")
 
@@ -316,13 +344,13 @@ func _resolve_bar(resolved_bar: int) -> void:
 	if _finished:
 		return
 	if _is_attack_bar(resolved_bar):
-		_resolve_boss_attack()
+		_resolve_boss_attack((resolved_bar + 1) * BAR_MS)
 
 
 func _cast_skill(skill: String, grade: String) -> void:
 	_last_action = "cast"
 	_action_flash_until = Time.get_ticks_msec() + 150
-	var result: Dictionary = _battle.cast_spell(skill, grade)
+	var result: Dictionary = _battle.cast_spell(skill, grade, _adjusted_song_time())
 	_tutorial_casts[skill] += 1
 	if _practice_mode:
 		_practice.record_cast(skill)
@@ -335,7 +363,7 @@ func _cast_skill(skill: String, grade: String) -> void:
 		"fireball":
 			_boss_hit_until = Time.get_ticks_msec() + 420
 			_trigger_stage_shake(2.8, 170)
-			_show_feedback("%s  -%d" % [SKILL_NAMES[skill], result.amount], SKILL_COLORS[skill], 720)
+			_show_feedback("%s -%d%s" % [SKILL_NAMES[skill], result.amount, " POWER" if result.bonus > 0 else ""], SKILL_COLORS[skill], 720)
 		"shield":
 			_shield_flash_until = Time.get_ticks_msec() + 850
 			_show_feedback(SKILL_NAMES[skill], SKILL_COLORS[skill], 720)
@@ -343,14 +371,20 @@ func _cast_skill(skill: String, grade: String) -> void:
 			_show_feedback("%s  +%d" % [SKILL_NAMES[skill], result.amount], SKILL_COLORS[skill], 720)
 
 
-func _resolve_boss_attack() -> void:
-	var result: Dictionary = _battle.boss_attack(_director.attack_damage(_active_phase))
+func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
+	var impact := impact_time_ms if impact_time_ms >= 0 else _adjusted_song_time()
+	var damage := 0 if _practice_mode else _director.attack_damage(_active_phase)
+	var result: Dictionary = _battle.boss_attack(damage, impact)
 	_boss_attack_until = Time.get_ticks_msec() + 520
 	if result.blocked:
 		_shield_flash_until = Time.get_ticks_msec() + 620
 		_trigger_stage_shake(2.2, 180)
-		_show_feedback("BLOCKED", Color("45e6ff"), 760)
-		_play_sfx("shield_block")
+		_show_feedback("PERFECT GUARD" if result.perfect_guard else "BLOCKED", Art.TEAL, 760)
+		_play_sfx("parry" if result.perfect_guard else "shield_block")
+		if result.broke:
+			_break_flash_until = Time.get_ticks_msec() + 850
+			_boss_hit_until = Time.get_ticks_msec() + 420
+			_show_feedback("WARDEN EXPOSED", Art.GOLD, 1000)
 	else:
 		_trigger_stage_shake(4.5, 280)
 		_show_feedback("BEAST STRIKE  -%d" % result.damage, Color("ff668e"), 820)
@@ -360,7 +394,9 @@ func _resolve_boss_attack() -> void:
 
 
 func _is_attack_bar(bar: int) -> bool:
-	return not _practice_mode and _director.is_attack_bar(bar, _active_phase)
+	if _practice_mode:
+		return _practice_defense and bar >= 0 and (bar + 1) % 2 == 0
+	return _director.is_attack_bar(bar, _active_phase)
 
 
 func _adjusted_song_time() -> int:
@@ -387,9 +423,9 @@ func _stage_shake_offset() -> Vector2:
 
 
 func _update_attack_cue(adjusted_time_ms: int) -> void:
-	if _practice_mode or _finished:
+	if _finished or not _is_attack_bar(_bar_index):
 		return
-	var cue_index: int = _director.attack_cue_index(adjusted_time_ms, _bar_index, _active_phase)
+	var cue_index: int = _attack_cue_index(adjusted_time_ms)
 	var cue: Dictionary = _attack_cue_audio.next_cue(_bar_index, cue_index)
 	if not cue.should_play:
 		return
@@ -429,6 +465,13 @@ func _result_overlay_data() -> Dictionary:
 		"timing_bias": _performance.timing_bias(),
 		"boss_hp": _battle.boss_hp,
 		"boss_max_hp": _battle.MAX_BOSS_HP,
+		"max_combo": _battle.max_combo,
+		"damage": _battle.total_damage,
+		"healing": _battle.total_healing,
+		"blocks": _battle.blocks,
+		"perfect_guards": _battle.perfect_guards,
+		"breaks": _battle.break_count,
+		"duration_seconds": int(maxi(0, _song_time_ms) / 1000),
 	}
 
 
@@ -441,7 +484,7 @@ func _toggle_pause() -> void:
 		_overlay.show_pause()
 	else:
 		var paused_duration := Time.get_ticks_msec() - _pause_started_ticks
-		for field in ["_action_flash_until", "_skill_flash_until", "_boss_hit_until", "_boss_attack_until", "_shield_flash_until", "_feedback_until", "_stage_shake_until"]:
+		for field in ["_action_flash_until", "_skill_flash_until", "_boss_hit_until", "_boss_attack_until", "_shield_flash_until", "_feedback_until", "_stage_shake_until", "_break_flash_until"]:
 			if int(get(field)) > _pause_started_ticks:
 				set(field, int(get(field)) + paused_duration)
 	if not _paused and not _music_started:
@@ -472,7 +515,7 @@ func _setup_music() -> bool:
 
 
 func _setup_sfx() -> void:
-	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "heal", "boss", "warning", "error", "count"]:
+	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "parry", "heal", "boss", "warning", "error", "count"]:
 		var player := AudioStreamPlayer.new()
 		player.stream = _make_sfx(sound_name)
 		player.volume_db = _sfx_profile.volume_db(sound_name)
@@ -524,6 +567,8 @@ func _make_sfx(kind: String) -> AudioStreamWAV:
 
 func _synthesize_sfx_sample(kind: String, t: float, progress: float) -> float:
 	match kind:
+		"parry":
+			return sin(TAU * 880.0 * t) * 0.7 + sin(TAU * 1320.0 * t) * 0.4
 		"charge":
 			var frequency := lerpf(180.0, 95.0, progress)
 			return sin(TAU * frequency * t)
@@ -595,9 +640,17 @@ func _draw_health() -> void:
 			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
 	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
 	if _practice_mode:
-		label = "PRACTICE / NO DAMAGE"
+		label = "DEFENSE / NO DAMAGE" if _practice_defense else "PRACTICE / NO DAMAGE"
 	Art.pixel_text(self, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
 	draw_circle(Vector2(160, 19), 1.1, Art.GOLD)
+	for pip in 4:
+		var ready: bool = _battle.resonance_ready or pip < _battle.combo % 4
+		draw_rect(Rect2(16 + pip * 4, 21, 2, 2), Art.GOLD if ready else Color("263739"))
+	Art.pixel_text(self, Vector2(37, 23), "COMBO %02d" % _battle.combo, HORIZONTAL_ALIGNMENT_LEFT, 65, 4, Art.GOLD if _battle.resonance_ready else Art.MUTED)
+	for pip in 3:
+		draw_rect(Rect2(214 + pip * 5, 21, 3, 2), Art.GOLD if _battle.exposed or pip < _battle.fracture else Color("263739"))
+	Art.pixel_text(self, Vector2(237, 23), "EXPOSED" if _battle.exposed else "FRACTURE", HORIZONTAL_ALIGNMENT_RIGHT, 67, 4, Art.GOLD if _battle.exposed else Art.MUTED)
+
 
 func _draw_player() -> void:
 	var now := _visual_now()
@@ -641,6 +694,14 @@ func _draw_boss() -> void:
 		draw_arc(center, 35.0, -PI / 2.0, -PI / 2.0 + TAU * attack_progress, 40, warning_color, 2.0)
 	draw_ellipse_shadow(Vector2(260, 128), Vector2(27, 3))
 	var tint := Color(1.5, 1.2, 1.0) if now < _boss_hit_until else Color.WHITE
+	if _battle.exposed:
+		draw_arc(center, 37, 0, TAU, 40, Color(Art.GOLD, 0.4), 1.0)
+	if now < _break_flash_until:
+		var progress := clampf(float(now - (_break_flash_until - 850)) / 850.0, 0, 1)
+		for fragment in 8:
+			var angle := float(fragment) * TAU / 8
+			var location := center + Vector2(cos(angle), sin(angle)) * (25 + progress * 21)
+			draw_line(location, location + Vector2(cos(angle + 0.8), sin(angle + 0.8)) * 5, Color(Art.GOLD, 1.0 - progress), 2.0)
 	var pose: Rect2 = SpritePose.boss(Rect2(center.x - 49, center.y - 47, 98, 93), now - (_boss_attack_until - 520), now - (_boss_hit_until - 420))
 	draw_texture_rect(BOSS_ART, pose, false, tint)
 	if now < _boss_hit_until:
@@ -653,7 +714,7 @@ func _draw_boss() -> void:
 	if warning:
 		var warning_color := _attack_pattern_color()
 		var adjusted_time := _adjusted_song_time()
-		var cue_index: int = _director.attack_cue_index(adjusted_time, _bar_index, _active_phase)
+		var cue_index: int = _attack_cue_index(adjusted_time)
 		var cue_steps: Array = _director.attack_cue_steps(_bar_index, _active_phase)
 		var time_in_bar := adjusted_time - _bar_index * BAR_MS
 		var current_step := clampi(int(floor(float(time_in_bar) / float(ATTACK_SUBDIVISION_MS))), 0, 7)
@@ -823,7 +884,7 @@ func _draw_footer() -> void:
 	Art.pixel_text(self, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
 	if _practice_mode:
 		var focus: String = _practice.current_skill()
-		var hint := "FREE PRACTICE / ESC TITLE" if focus.is_empty() else "%s %d/2 / ESC TITLE" % [SKILL_NAMES[focus], _practice.counts[focus]]
+		var hint := ("T FREE / GUARD THE PULSE" if _practice_defense else "T DEFENSE / ESC TITLE") if focus.is_empty() else "%s %d/2 / ESC TITLE" % [SKILL_NAMES[focus], _practice.counts[focus]]
 		Art.pixel_text(self, Vector2(183, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 121, 4, Art.GOLD)
 	else:
 		var focus: String = _teaching_skill()
@@ -852,6 +913,7 @@ func _clear_visual_effects() -> void:
 	_boss_attack_until = 0
 	_shield_flash_until = 0
 	_stage_shake_until = 0
+	_break_flash_until = 0
 	_last_action = ""
 	_last_skill = ""
 
@@ -908,3 +970,15 @@ func _handle_options_input(key: int) -> void:
 
 func _visual_now() -> int:
 	return _pause_started_ticks if _paused else Time.get_ticks_msec()
+
+func _attack_cue_index(time_ms: int) -> int:
+	return _director.attack_cue_index(time_ms, _bar_index, _active_phase, _practice_mode and _practice_defense)
+
+
+func _restore_menu_overlay() -> void:
+	if _waiting_to_start:
+		_overlay.show_title()
+	elif _finished:
+		_overlay.show_result(_result_overlay_data())
+	else:
+		_overlay.show_pause()
