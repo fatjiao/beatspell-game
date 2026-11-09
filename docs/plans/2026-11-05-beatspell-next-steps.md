@@ -100,7 +100,7 @@ git commit -m "tune: rebalance rhythm battle feedback audio"
 - Modify: `scripts/beatspell/battle_director.gd`
 - Modify: `tests/test_battle_director.gd`
 - Modify: `scripts/beatspell/beatspell_battle.gd`
-- Create: `docs/plans/2026-11-05-boss-pattern-variation-design.md`
+- Create: `docs/plans/2026-11-09-syncopated-boss-and-results-design.md`
 
 **Step 1: 先写一页设计**
 
