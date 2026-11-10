@@ -60,7 +60,7 @@ func cast_spell(skill: String, grade: String = "perfect", song_time_ms: int = -1
 
 
 func boss_attack(damage: int = 2, impact_time_ms: int = -1) -> Dictionary:
-	var result := {"blocked": false, "damage": 0, "perfect_guard": false, "broke": false}
+	var result := {"blocked": false, "damage": 0, "perfect_guard": false, "broke": false, "guard_age_ms": -1, "guard_reason": "unprotected"}
 	if shield_active:
 		shield_active = false
 		blocks += 1
@@ -68,6 +68,17 @@ func boss_attack(damage: int = 2, impact_time_ms: int = -1) -> Dictionary:
 		var precise := _shield_perfect and _shield_cast_ms >= 0 and impact_time_ms >= 0 and age >= 0 and age <= PARRY_WINDOW_MS
 		result.blocked = true
 		result.perfect_guard = precise
+		result.guard_age_ms = age if _shield_cast_ms >= 0 and impact_time_ms >= 0 else -1
+		if precise:
+			result.guard_reason = "perfect"
+		elif _shield_cast_ms < 0 or impact_time_ms < 0:
+			result.guard_reason = "timing"
+		elif not _shield_perfect:
+			result.guard_reason = "grade"
+		elif age > PARRY_WINDOW_MS:
+			result.guard_reason = "early"
+		else:
+			result.guard_reason = "timing"
 		if precise:
 			perfect_guards += 1
 		if not exposed:

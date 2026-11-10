@@ -1,4 +1,4 @@
-BEATSPELL INTERNAL PLAYTEST v0.3.2 - PIXEL CHARACTER POSES
+BEATSPELL INTERNAL PLAYTEST v0.4.0 - DEFENSE TRAINING
 
 Double-click "Launch Beatspell.cmd" to start.
 
@@ -10,6 +10,8 @@ R           Restart battle
 C           Audio calibration
 T           Practice mode (from title)
 T           Toggle defense drill after completing practice lessons
+Left/Right  Queue Standard / Syncopated / Rush defense rhythm for next bar
+Tab         Training report (pauses practice); Tab/Esc closes to pause
 H           Spellbook (pauses battle)
 O           Options (music, SFX, screen shake, fullscreen)
 Arrows      Adjust options; Esc closes options

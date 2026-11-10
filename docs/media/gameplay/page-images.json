@@ -47,8 +47,8 @@
       "title": "Boss 三种预警时序",
       "section": "Boss 阶段与攻击预警",
       "path": "boss-cues.png",
-      "reference": "library-file:fde1_bGliZmlsZV9XQTAxTllPUzBfcHhjY3dhSjM0X0l3_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "fdf67b407713f98b18abfc314c8035c861c32feef988f376d76d4b0d5703a6a4",
+      "reference": "library-file:fde1_bGliZmlsZV9ESkdYdmI3OW5fb2wzb3dGdlBqOW1n_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "659c20ec8ae293962c1cc81bdd6b0c2028840e7948ce275b14cdf4923e88bf6c",
       "width": 1200,
       "height": 940
     },
@@ -63,12 +63,22 @@
       "height": 940
     },
     {
+      "name": "defense-report",
+      "title": "三种防御训练与训练报告",
+      "section": "防御训练",
+      "path": "defense-report.png",
+      "reference": "library-file:fde1_bGliZmlsZV9LNmVBWmlnXzRuUmY4Q1hYSThIRWln_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "64dcbde49f26e1d50b350f2708fe145f0896c7b36fd26272a89cbb1dfb58df9f",
+      "width": 1200,
+      "height": 940
+    },
+    {
       "name": "results",
       "title": "结算画面实机说明",
       "section": "结算统计与评级",
       "path": "results.png",
-      "reference": "library-file:fde1_bGliZmlsZV9pZDNCVnNHMUtSbmY4Y2JPai1qOTdn_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "36b137efaa507ad5b5cf16620fa9cf0e11b50abf54c4fcd6d68b3f221699b487",
+      "reference": "library-file:fde1_bGliZmlsZV9KZmdMaDcxM2FqVzV6U2NSRG40d3Vn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "4a802420a016591399399bd0a5a89ad8995869bdc69af72fa6cf5247179fcf89",
       "width": 1200,
       "height": 940
     },

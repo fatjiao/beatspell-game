@@ -12,6 +12,7 @@ const TARGET_SAMPLES := 8
 var _start_ticks := 0
 var _last_beat := -1
 var _samples: Array = []
+var _last_sampled_beat := -1
 var _result_ms := 0
 var _finished := false
 var _flash_until := 0
@@ -58,13 +59,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _capture_tap() -> void:
 	var elapsed := Time.get_ticks_msec() - _start_ticks
-	if elapsed < 0:
+	var sample := CalibrationMath.sample_for_tap(elapsed, _last_sampled_beat, BEAT_LENGTH_MS)
+	if not sample.accepted:
 		return
-	var nearest_beat := int(round(float(elapsed) / BEAT_LENGTH_MS))
-	var offset := elapsed - nearest_beat * BEAT_LENGTH_MS
-	if absi(offset) > CalibrationMath.MAX_OFFSET_MS:
-		return
-	_samples.append(offset)
+	_last_sampled_beat = sample.beat
+	_samples.append(sample.offset_ms)
 	_flash_until = Time.get_ticks_msec() + 130
 	if _samples.size() >= TARGET_SAMPLES:
 		_result_ms = CalibrationMath.stable_offset(_samples)
@@ -76,6 +75,7 @@ func _restart() -> void:
 	_start_ticks = Time.get_ticks_msec() + 1200
 	_last_beat = -1
 	_samples.clear()
+	_last_sampled_beat = -1
 	_result_ms = 0
 	_finished = false
 	_flash_until = 0

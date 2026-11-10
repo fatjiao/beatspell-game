@@ -6,7 +6,7 @@
 
 ## 项目文档
 
-- [公开玩法图文说明](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md)：无需登录即可查看和转发，包含 8 张界面截图与机制图解、完整规则、输入示例和数值
+- [公开玩法图文说明](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md)：无需登录即可查看和转发，包含 9 张界面截图与机制图解、完整规则、输入示例和数值
 - [Pages 编辑版](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)：需要对应账号访问，与公开版同步维护
 - [开发接力指南](docs/PROJECT_HANDOFF.md)：新电脑配置、当前状态、目录结构、验证方法与 AI 接力提示词
 - [下一阶段开发计划](docs/plans/2026-11-05-beatspell-next-steps.md)：按优先级排列的 Demo 路线图和验收标准
@@ -33,7 +33,7 @@
 .\build-playtest.ps1
 ```
 
-脚本会运行 20 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.3.2.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+脚本会运行 21 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.4.0.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
 
 当前美术方向是 **16-bit 像素风**：月夜观星台、中性施法者与黄铜守卫均采用像素素材，配合 320×180 实际渲染分辨率、最近邻采样及整数倍缩放。后续美术继续遵循像素风。素材与生成提示词见 [像素美术来源](assets/art/beatspell/pixel/README.md)。
 
@@ -47,6 +47,8 @@
 - `R`：重新开始
 - `C`：打开音频延迟校准
 - `T`：标题界面进入练习模式
+- 左右方向键：防御训练中排队切换标准、切分和 Rush 节奏，下一小节生效
+- `Tab`：练习中查看训练报告；`Tab/Esc` 返回暂停页，`P` 继续
 - `O`：打开设置；方向键调整音乐、音效、屏幕震动与全屏，Esc 返回
 - `H`：打开术式手册，战斗会暂停
 - `Esc`：返回标题；标题界面退出
@@ -59,7 +61,7 @@
 
 标题按 `T` 可以进入无伤害、无时限的独立练习。按 FLARE → MEND → AEGIS 的顺序，每种成功施放两次，之后进入自由练习。音乐会循环，底栏显示当前练习与成功次数，`R` 重置练习，Esc 返回标题。正常 Boss 战仍保留九小节开场教学。
 
-完成三个练习后再次按 `T`，可切换无伤害防御训练：每两小节攻击一次，可以练习精准格挡与破防；再按 `T` 回到自由练习。
+完成三个练习后再次按 `T`，可切换无伤害防御训练，每两小节攻击一次。左右键选择标准、切分或 Rush，切换在下一小节生效，保持当前预警完整；进入训练时也会等待完整的未来攻击小节。每种节奏连续精准格挡 3 次记为通过，`Tab` 报告分别记录尝试、格挡、精准格挡和最佳连续次数，切换模式保留本轮记录。再按 `T` 回自由练习，`R` 重开会重置课程与训练记录。
 
 - `FLARE`：整拍按 `D/F`，下一整拍按 `J/K`。对 Boss 造成伤害。
 - `AEGIS`：整拍按 `D/F`，空一拍后在第三拍按 `J/K`。抵挡下一次 Boss 攻击。
@@ -79,6 +81,8 @@
 
 胜利或失败后，结算面板会显示表现等级、成功施法数、Perfect/Good/失败次数、平均输入偏差，以及整体偏快、偏慢或基本准时的倾向。
 
+超时指令以及战斗结束前尚未完成的组合，均计一次失败尝试，不虚增物理输入次数。音频校准需在 8 个不同的最近拍上输入，同拍连按只计一次。
+
 ## 音频
 
 Demo 暂时使用现有 120 BPM 分轨作为开发音乐。独立 WAV 音效与来源见 [音效库](assets/sfx/beatspell/README.md)。源码为 `scripts/beatspell/sound_bank.gd`，运行 `tools/generate_sfx.gd` 可重建全部文件和 `build/beatspell-sound-reel.wav` 试听串。首次使用蓝牙耳机或更换音频设备后，建议按 `C` 校准。
@@ -97,4 +101,4 @@ Demo 暂时使用现有 120 BPM 分轨作为开发音乐。独立 WAV 音效与�
 & '.tools\godot\Godot_v4.7.2-stable_win64_console.exe' --headless --path . --script res://tests/test_playtest_flow.gd
 ```
 
-练习进度由 `practice_director.gd` 管理，像素对齐的动作位移与压缩恢复由 `sprite_pose.gd` 管理。当前动作使用静态像素素材的程序动画，不是多帧精灵图。
+练习课程由 `practice_director.gd` 管理，专项防御统计由 `defense_drill.gd` 管理。`sprite_pose.gd` 在六张独立姿态 PNG 之间切换，并叠加像素对齐的位移与恢复动画。

@@ -1,6 +1,6 @@
 # Gameplay guide figures
 
-Eight 1200×940 PNG figures accompany the online Page and `docs/GAMEPLAY.md`. They combine the game's existing preview captures with code-native labels and diagrams. Original game textures and captures are not overwritten. These are documentation assets; `docs/.gdignore` keeps them out of Godot's runtime asset imports.
+Nine 1200×940 PNG figures accompany the online Page and `docs/GAMEPLAY.md`. They combine the game's existing preview captures with code-native labels and diagrams. Original game textures and captures are not overwritten. These are documentation assets; `docs/.gdignore` keeps them out of Godot's runtime asset imports.
 
 | File | Subject |
 |---|---|
@@ -12,6 +12,7 @@ Eight 1200×940 PNG figures accompany the online Page and `docs/GAMEPLAY.md`. Th
 | practice.png | Practice mode and lesson progress |
 | results.png | Result panel and interpretation |
 | character-poses.png | Actual caster and Warden pose textures |
+| defense-report.png | Three defense practice patterns and the paused training report |
 
 Rebuild from the repository root with a graphical Godot runtime:
 
@@ -22,8 +23,10 @@ Rebuild from the repository root with a graphical Godot runtime:
 
 The first command captures real game UI in reproducible illustrative states, including sample result statistics. The second uses a separate 1200×940 viewport, nearest-neighbor screenshot rendering, and local system fonts for Chinese labels. No font files are redistributed. Do not run the figure renderer headlessly; it needs graphical rendering to produce the images.
 
+To rebuild only affected figures, append their names after `--`, for example `-- defense-report boss-cues results`. This preserves unchanged figure bytes and their existing uploads.
+
 When gameplay, timing or layout changes, revise the diagram labels and coordinates in the generator as needed, rebuild and visually inspect the affected PNGs. The existing screenshots are under ignored `build/`; another computer must run the capture command first.
 
 `page-images.json` maps local files to confirmed uploaded native Page image references and SHA-256 digests. The online guide embeds these as native image blocks at width 960 with preserved aspect ratio. Unchanged files can reuse those references. Changed files need a new upload and a guarded update to their existing Page image blocks. Never replace online image references with GitHub raw URLs; those do not create native Page images.
 
-The eight images were inspected locally for labels, glyphs, cropping and content. Online readback confirmed all eight native image blocks and image geometry. Whole-page browser preview was blocked by a separate browser sign-in requirement; it was not treated as a document access failure.
+Figures are inspected locally for labels, glyphs, cropping and content. Online readback checks native image blocks and image geometry. Whole-page browser preview was blocked by a separate browser sign-in requirement; it was not treated as a document access failure. The public GitHub guide and its figures remain accessible without sign-in.

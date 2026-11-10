@@ -117,6 +117,8 @@ func _capture() -> void:
 	performance.record_attempt("fireball", "perfect")
 	performance.record_attempt("heal", "good")
 	performance.record_attempt("", "miss")
+	# Include one expired command as an additional failed attempt.
+	performance.record_attempt("", "miss")
 	stage.get_node("BattleOverlay").show_result(stage.call("_result_overlay_data"))
 	stage.queue_redraw()
 	await process_frame
@@ -186,6 +188,43 @@ func _capture() -> void:
 	if not _save_view("res://build/beatspell-charge-preview.png"):
 		quit(1)
 		return
+	stage.get("_practice").step = 3
+	stage.set("_practice_defense", true)
+	var drill = stage.get("_drill")
+	for index in 3:
+		if index > 0:
+			drill.request_selection(1)
+			drill.commit_selection()
+		stage.call("_clear_visual_effects")
+		stage.set("_feedback_until", 0)
+		stage.set("_song_time_ms", 3750)
+		stage.set("_bar_index", 1)
+		stage.get("_battle").shield_active = false
+		stage.queue_redraw()
+		await process_frame
+		await process_frame
+		if not _save_view("res://build/beatspell-drill-%s-preview.png" % drill.pattern()):
+			quit(1)
+			return
+		for repetition in (2 if index == 2 else 3):
+			stage.set("_song_time_ms", 3500)
+			if index == 2 and repetition == 0:
+				stage.get("_battle").shield_active = false
+			else:
+				stage.call("_cast_skill", "shield", "good" if index == 1 and repetition == 0 else "perfect")
+			stage.call("_resolve_boss_attack", 4000)
+	var report_key := InputEventKey.new()
+	report_key.physical_keycode = KEY_TAB
+	report_key.pressed = true
+	stage.call("_unhandled_input", report_key)
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	if not _save_view("res://build/beatspell-drill-report-preview.png"):
+		quit(1)
+		return
+	stage.call("_start_run")
+	stage.get_node("BattleOverlay").hide_primary()
 	stage.set("_practice_mode", false)
 	stage.set("_song_time_ms", 24000)
 	stage.set("_bar_index", 12)

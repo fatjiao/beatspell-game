@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Beatspell Boss Demo"
 config/description="An original rhythm-spell boss battle prototype."
-config/version="0.3.2-internal"
+config/version="0.4.0-internal"
 config/icon="res://icon.svg"
 run/main_scene="res://scenes/beatspell/beatspell_battle.tscn"
 

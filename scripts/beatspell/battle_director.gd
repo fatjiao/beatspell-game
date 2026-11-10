@@ -59,9 +59,9 @@ func attack_pattern(bar_index: int, phase: int) -> String:
 	return "rush" if attack_ordinal % 2 == 0 else "syncopated"
 
 
-func attack_cue_steps(bar_index: int, phase: int) -> Array:
+func attack_cue_steps(bar_index: int, phase: int, pattern_override: String = "") -> Array:
 	var steps: Array
-	match attack_pattern(bar_index, phase):
+	match pattern_override if not pattern_override.is_empty() else attack_pattern(bar_index, phase):
 		"syncopated":
 			steps = SYNCOPATED_CUE_STEPS
 		"rush":
@@ -71,7 +71,7 @@ func attack_cue_steps(bar_index: int, phase: int) -> Array:
 	return steps.duplicate()
 
 
-func attack_cue_index(song_time_ms: int, bar_index: int, phase: int, force_attack: bool = false) -> int:
+func attack_cue_index(song_time_ms: int, bar_index: int, phase: int, force_attack: bool = false, pattern_override: String = "") -> int:
 	if not force_attack and not is_attack_bar(bar_index, phase):
 		return -1
 	var time_in_bar := song_time_ms - bar_index * BAR_MS
@@ -79,7 +79,7 @@ func attack_cue_index(song_time_ms: int, bar_index: int, phase: int, force_attac
 		return -1
 	var current_step := clampi(int(floor(float(time_in_bar) / float(SUBDIVISION_MS))), 0, 7)
 	var cue_index := -1
-	var cue_steps := attack_cue_steps(bar_index, phase)
+	var cue_steps := attack_cue_steps(bar_index, phase, pattern_override)
 	for index in cue_steps.size():
 		if current_step < int(cue_steps[index]):
 			break

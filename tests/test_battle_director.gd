@@ -36,6 +36,12 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_cue_steps(8, 1), [0, 2, 4, 6], "standard attack cues occupy quarter-note subdivisions")
 	_expect_equal(failures, director.attack_cue_steps(14, 2), [0, 3, 4, 7], "syncopated attack uses uneven eighth-note spacing")
 	_expect_equal(failures, director.attack_cue_steps(11, 3), [0, 4, 6, 7], "rush attack accelerates through its final cues")
+	_expect_equal(failures, director.attack_cue_steps(1, 1, "syncopated"), [0, 3, 4, 7], "practice override supplies syncopated steps in phase one")
+	_expect_equal(failures, director.attack_cue_index(2500, 1, 1, true, "rush"), 0, "rush override holds its long opening gap")
+	_expect_equal(failures, director.attack_cue_index(3000, 1, 1, true, "rush"), 1, "rush override advances on its actual second cue")
+	var copy: Array = director.attack_cue_steps(1, 1, "rush")
+	copy[0] = 7
+	_expect_equal(failures, director.attack_cue_steps(1, 1, "rush")[0], 0, "caller cannot mutate shared cue patterns")
 
 	_expect_equal(failures, director.attack_cue_index(15_999, 7, 1), -1, "safe bar has no warning cue")
 	_expect_equal(failures, director.attack_cue_index(16_000, 8, 1), 0, "attack warning starts on its first beat")

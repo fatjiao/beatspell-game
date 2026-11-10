@@ -89,7 +89,14 @@ class Figure extends Control:
 				text(Vector2(120, 735), "等级：术式成功率、Miss 输入和平均绝对偏差共同决定。", 26)
 				text(Vector2(120, 786), "偏差：越接近 0ms 越准；EARLY / LATE 表示整体早晚倾向。", 26)
 				text(Vector2(120, 837), "战斗账本：查看最高连击、伤害、格挡、精准格挡和破防。", 26)
+				text(Vector2(120, 888), "超时指令和战斗结束前未完成的组合，也会计入失败次数。", 25, MUTED)
 			7: poses()
+			8:
+				header("三种防御训练与训练报告", "实机截图 · 左右键切换节奏，Tab 查看本轮各模式的成绩")
+				shot("res://build/beatspell-drill-report-preview.png")
+				text(Vector2(120, 735), "TRY 尝试 / BLK 格挡 / PRF 精准格挡 / RUN 最佳连续精准格挡。", 25)
+				text(Vector2(120, 786), "每种节奏连续精准格挡 3 次标为 OK；切换模式保留本轮成绩。", 25)
+				text(Vector2(120, 837), "报告暂停战斗，Tab 或 Esc 返回暂停页，P 继续；R 重开清空。", 25)
 
 
 	func overview() -> void:
@@ -186,7 +193,7 @@ class Figure extends Control:
 			center_text(Vector2(right, y - 83), "命中", 25, RED)
 			center_text(Vector2(right, y + 48), "2000ms", 23, RED)
 		text(Vector2(48, 836), "青色区：命中前 600ms，Perfect 护盾完成后可形成精准格挡。", 27, TEAL)
-		text(Vector2(48, 887), "最后一声不是攻击时刻；护盾仍按“动作 → 空拍 → 结束”输入。", 26, MUTED)
+		text(Vector2(48, 887), "防御训练中按左右键选择节奏，切换在下一小节生效。", 26, MUTED)
 
 
 	func poses() -> void:
@@ -221,8 +228,11 @@ func _build() -> void:
 	var figure := Figure.new()
 	figure.size = Vector2(1200, 940)
 	viewport.add_child(figure)
-	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses"]
+	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report"]
+	var selected := OS.get_cmdline_user_args()
 	for index in names.size():
+		if not selected.is_empty() and names[index] not in selected:
+			continue
 		figure.kind = index
 		figure.queue_redraw()
 		await process_frame
@@ -233,7 +243,7 @@ func _build() -> void:
 			push_error("Unable to save figure: " + names[index])
 			quit(1)
 			return
-	print("Saved 8 illustrated gameplay figures.")
+	print("Saved selected illustrated gameplay figures.")
 	viewport.queue_free()
 	await process_frame
 	quit(0)

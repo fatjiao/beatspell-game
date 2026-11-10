@@ -8,6 +8,13 @@ func run() -> Array[String]:
 	if calibration_script == null or settings_script == null:
 		failures.append("Calibration scripts are missing")
 		return failures
+	_assert_equal(failures, calibration_script.sample_for_tap(-1, -1).accepted, false, "pre-roll tap is ignored")
+	_assert_equal(failures, calibration_script.sample_for_tap(610, 1).accepted, false, "same beat cannot fill multiple calibration slots")
+	_assert_equal(failures, calibration_script.sample_for_tap(580, 2).accepted, false, "backward beat is ignored")
+	var sample: Dictionary = calibration_script.sample_for_tap(1218, 1)
+	_assert_equal(failures, sample.accepted, true, "next distinct beat is accepted")
+	_assert_equal(failures, sample.beat, 2, "sample tracks the nearest beat")
+	_assert_equal(failures, sample.offset_ms, 18, "sample preserves timing offset")
 
 	_assert_equal(
 		failures,

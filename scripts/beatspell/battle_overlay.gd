@@ -13,6 +13,7 @@ var phase_color := Art.GOLD
 var result_data: Dictionary = {}
 var options_data: Dictionary = {}
 var selected_option := 0
+var drill_data: Dictionary = {}
 
 var _phase_started_ticks := 0
 var _phase_until_ticks := 0
@@ -43,6 +44,12 @@ func show_options(data: Dictionary, selected: int) -> void:
 
 func show_guide() -> void:
 	mode = "guide"
+	_request_redraw()
+
+
+func show_drill_report(data: Dictionary) -> void:
+	mode = "drill_report"
+	drill_data = data.duplicate(true)
 	_request_redraw()
 
 
@@ -110,6 +117,8 @@ func _draw() -> void:
 			_draw_guide()
 		"result":
 			_draw_result()
+		"drill_report":
+			_draw_drill_report()
 	if _phase_until_ticks > Time.get_ticks_msec() and mode.is_empty():
 		_draw_phase_flash()
 
@@ -179,6 +188,31 @@ func _draw_phase_flash() -> void:
 	text_color.a = alpha
 	Art.pixel_text(self, Vector2(64, 81), "PHASE %d · %s" % [phase_number, phase_name], HORIZONTAL_ALIGNMENT_CENTER, 192, 13, text_color)
 
+
+func _draw_drill_report() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.92))
+	Art.panel(self, Rect2(24, 18, 272, 144), Art.GOLD, true)
+	Art.pixel_text(self, Vector2(43, 39), "DEFENSE REPORT", HORIZONTAL_ALIGNMENT_CENTER, 234, 12, Art.IVORY)
+	var columns := [44, 158, 186, 214, 249]
+	for index in columns.size():
+		Art.pixel_text(self, Vector2(columns[index], 57), ["PATTERN", "TRY", "BLK", "PRF", "RUN"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.MUTED)
+	var rows: Array = drill_data.get("rows", [])
+	for index in rows.size():
+		var row: Dictionary = rows[index]
+		var y := 75 + index * 17
+		if index == int(drill_data.get("selected", -1)):
+			draw_rect(Rect2(35, y - 8, 250, 13), Color(Art.TEAL, 0.12))
+		Art.pixel_text(self, Vector2(columns[0], y), row.label + (" OK" if row.clear else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.GOLD if row.clear else Art.IVORY)
+		var values := [row.attempts, row.blocks, row.perfect, row.best]
+		for column in values.size():
+			Art.pixel_text(self, Vector2(columns[column + 1], y), "%02d" % int(values[column]), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.TEAL)
+	var last: String = drill_data.get("last_outcome", "NO ATTACKS YET")
+	var age := int(drill_data.get("last_age_ms", -1))
+	if age >= 0:
+		last += " %dMS" % age
+	Art.pixel_text(self, Vector2(40, 132), last, HORIZONTAL_ALIGNMENT_CENTER, 240, 6, Art.GOLD)
+	Art.pixel_text(self, Vector2(40, 151), "TAB / ESC BACK . P RESUME", HORIZONTAL_ALIGNMENT_CENTER, 240, 5, Art.MUTED)
+
 func _draw_options() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.92))
 	Art.panel(self, Rect2(49, 24, 222, 132), Art.GOLD, true)
@@ -213,6 +247,7 @@ func _draw_guide() -> void:
 		"BLOCK 1 / GUARD 2 / BREAK AT 3",
 		"BREAK: NEXT FLARE +2 DAMAGE",
 		"4 CAST COMBO: NEXT FLARE +1",
+		"DRILL: ARROWS MODE / TAB REPORT",
 	]
 	for index in lines.size():
 		Art.pixel_text(self, Vector2(48, 53 + index * 11), lines[index], HORIZONTAL_ALIGNMENT_LEFT, 224, 6, Art.TEAL if index < 3 else Art.MUTED)
