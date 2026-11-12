@@ -1,5 +1,7 @@
 extends RefCounted
 
+const Lang = preload("res://scripts/beatspell/localization.gd")
+
 const SETTINGS_PATH := "user://settings.json"
 const DEFAULTS := {
 	"audio_offset_ms": 0,
@@ -8,6 +10,7 @@ const DEFAULTS := {
 	"sfx_volume": 0.8,
 	"screen_shake": true,
 	"fullscreen": false,
+	"language": "auto",
 }
 
 
@@ -53,6 +56,7 @@ static func _normalize(settings: Dictionary) -> Dictionary:
 		"sfx_volume": _volume(settings.get("sfx_volume", 0.8)),
 		"screen_shake": _boolean(settings.get("screen_shake", true), true),
 		"fullscreen": _boolean(settings.get("fullscreen", false), false),
+		"language": Lang.normalize(settings.get("language", "auto")),
 	}
 
 

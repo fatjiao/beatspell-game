@@ -6,7 +6,7 @@ $godotConsole = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_c
 $buildRoot = Join-Path $projectRoot 'build\BeatspellPlaytest'
 $packPath = Join-Path $buildRoot 'BeatspellPlaytest.pck'
 $runnerPath = Join-Path $buildRoot 'BeatspellPlaytest.exe'
-$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.4.0.zip'
+$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.5.0.zip'
 
 foreach ($required in @($godotGui, $godotConsole)) {
 	if (-not (Test-Path -LiteralPath $required)) {
@@ -39,6 +39,12 @@ Copy-Item -LiteralPath $godotGui -Destination $runnerPath -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'packaging\Launch Beatspell.cmd') -Destination (Join-Path $buildRoot 'Launch Beatspell.cmd') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'packaging\README.txt') -Destination (Join-Path $buildRoot 'README.txt') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'packaging\GODOT_LICENSE.txt') -Destination (Join-Path $buildRoot 'GODOT_LICENSE.txt') -Force
+$fontRoot = Join-Path $projectRoot 'assets\fonts\fusion-pixel'
+$fontNotices = Join-Path $buildRoot 'FONT_LICENSES'
+New-Item -ItemType Directory -Force -Path $fontNotices | Out-Null
+foreach ($notice in @('README.md', 'licenses-8px', 'licenses-10px')) {
+	Copy-Item -LiteralPath (Join-Path $fontRoot $notice) -Destination $fontNotices -Recurse -Force
+}
 
 & $godotConsole --headless --main-pack $packPath --quit-after 60
 if ($LASTEXITCODE -ne 0) {

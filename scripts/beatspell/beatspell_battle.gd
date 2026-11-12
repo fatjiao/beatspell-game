@@ -14,6 +14,7 @@ const PracticeDirector = preload("res://scripts/beatspell/practice_director.gd")
 const DefenseDrill = preload("res://scripts/beatspell/defense_drill.gd")
 const Effects = preload("res://scripts/beatspell/pixel_effects.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
+const Lang = preload("res://scripts/beatspell/localization.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_FRAMES := {
 	"idle": preload("res://assets/art/beatspell/pixel/poses/caster_idle.png"),
@@ -91,6 +92,7 @@ var _bar_index := -1
 var _active_phase := 1
 var _recent_command: Array = []
 var _feedback := "LISTEN TO THE PULSE"
+var _feedback_args: Array = []
 var _feedback_color := Color("dad7ff")
 var _feedback_until := 0
 var _last_action := ""
@@ -191,7 +193,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _practice_mode and _practice_defense and not _paused and is_key_press and event.physical_keycode in [KEY_LEFT, KEY_RIGHT]:
 		_drill.request_selection(-1 if event.physical_keycode == KEY_LEFT else 1)
-		_show_feedback("NEXT %s" % DefenseDrill.LABELS[_drill.requested], Art.GOLD, 900)
+		_show_feedback("NEXT %s", Art.GOLD, 900, [DefenseDrill.LABELS[_drill.requested]])
 		get_viewport().set_input_as_handled()
 		return
 	if _practice_mode and not _paused and is_key_press and event.physical_keycode == KEY_T and _practice.current_skill().is_empty():
@@ -290,6 +292,7 @@ func _start_run(practice: bool = false) -> void:
 	_performance.reset()
 	_recent_command.clear()
 	_feedback = "LISTEN TO THE PULSE"
+	_feedback_args.clear()
 	_feedback_color = Color("dad7ff")
 	_feedback_until = 0
 	_last_action = ""
@@ -335,7 +338,7 @@ func _update_bar() -> void:
 		if _drill.commit_selection():
 			_battle.shield_active = false
 			if _practice_defense:
-				_show_feedback("%s DRILL" % DefenseDrill.LABELS[_drill.selected], Art.GOLD, 700)
+				_show_feedback("%s DRILL", Art.GOLD, 700, [DefenseDrill.LABELS[_drill.selected]])
 		return
 	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
 	if _bar_index < 9:
@@ -344,7 +347,7 @@ func _update_bar() -> void:
 		_active_phase = next_phase
 		var phase_color := Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
 		_overlay.flash_phase(_active_phase, _director.phase_name(_active_phase), phase_color, 1050)
-		_show_feedback("PHASE %d · %s" % [_active_phase, _director.phase_name(_active_phase)], Color("ff9a6b"), 1050)
+		_show_feedback("PHASE %d · %s", Color("ff9a6b"), 1050, [_active_phase, _director.phase_name(_active_phase)])
 
 
 func _update_command() -> void:
@@ -412,12 +415,12 @@ func _cast_skill(skill: String, grade: String) -> void:
 		"fireball":
 			_boss_hit_until = Time.get_ticks_msec() + 420
 			_trigger_stage_shake(2.8, 170)
-			_show_feedback("%s -%d%s" % [SKILL_NAMES[skill], result.amount, " POWER" if result.bonus > 0 else ""], SKILL_COLORS[skill], 720)
+			_show_feedback("%s -%d%s", SKILL_COLORS[skill], 720, [SKILL_NAMES[skill], result.amount, " POWER" if result.bonus > 0 else ""])
 		"shield":
 			_shield_flash_until = Time.get_ticks_msec() + 850
 			_show_feedback(SKILL_NAMES[skill], SKILL_COLORS[skill], 720)
 		"heal":
-			_show_feedback("%s  +%d" % [SKILL_NAMES[skill], result.amount], SKILL_COLORS[skill], 720)
+			_show_feedback("%s  +%d", SKILL_COLORS[skill], 720, [SKILL_NAMES[skill], result.amount])
 
 
 func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
@@ -440,11 +443,11 @@ func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
 			_show_feedback("WARDEN EXPOSED", Art.GOLD, 1000)
 	else:
 		_trigger_stage_shake(4.5, 280)
-		_show_feedback("BEAST STRIKE  -%d" % result.damage, Color("ff668e"), 820)
+		_show_feedback("BEAST STRIKE  -%d", Color("ff668e"), 820, [result.damage])
 		_play_sfx("boss")
 	if _practice_mode and _practice_defense:
 		if drill_clear:
-			_show_feedback("%s CLEAR" % DefenseDrill.LABELS[_drill.selected], Art.GOLD, 1200)
+			_show_feedback("%s CLEAR", Art.GOLD, 1200, [DefenseDrill.LABELS[_drill.selected]])
 		elif not result.broke:
 			_show_feedback(_drill.report().last_outcome, Art.TEAL if result.blocked else Art.EMBER, 850)
 	if _battle.is_defeat():
@@ -493,8 +496,9 @@ func _update_attack_cue(adjusted_time_ms: int) -> void:
 		player.play()
 
 
-func _show_feedback(text: String, color: Color, duration_ms: int) -> void:
+func _show_feedback(text: String, color: Color, duration_ms: int, args: Array = []) -> void:
 	_feedback = text
+	_feedback_args = args.duplicate()
 	_feedback_color = color
 	_feedback_until = Time.get_ticks_msec() + duration_ms
 
@@ -564,7 +568,7 @@ func _setup_music() -> bool:
 	for instrument in MUSIC_FILES:
 		var stream = load(MUSIC_FILES[instrument])
 		if stream == null:
-			_error_text = "MISSING MUSIC: %s" % instrument
+			_error_text = instrument
 			ready = false
 			continue
 		stream.loop = true
@@ -618,7 +622,7 @@ func _draw() -> void:
 	_draw_footer()
 	if not _error_text.is_empty():
 		draw_rect(Rect2(24, 72, 272, 34), Color(0.06, 0.03, 0.08, 0.95))
-		Art.pixel_text(self, Vector2(32, 93), _error_text, HORIZONTAL_ALIGNMENT_CENTER, 256, 9, Color("ff668e"))
+		Art.pixel_text(self, Vector2(32, 93), Lang.text("MISSING MUSIC: %s", [_error_text]), HORIZONTAL_ALIGNMENT_CENTER, 256, 9, Color("ff668e"))
 
 
 func _draw_arena() -> void:
@@ -649,13 +653,13 @@ func _draw_health() -> void:
 			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
 	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
 	if _practice_mode:
-		label = "DRILL / %s" % DefenseDrill.SHORT_LABELS[_drill.selected] if _practice_defense else "PRACTICE / NO DAMAGE"
+		label = Lang.text("DRILL / %s", [DefenseDrill.SHORT_LABELS[_drill.selected]]) if _practice_defense else "PRACTICE / NO DAMAGE"
 	Art.pixel_text(self, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
 	draw_circle(Vector2(160, 19), 1.1, Art.GOLD)
 	for pip in 4:
 		var ready: bool = _battle.resonance_ready or pip < _battle.combo % 4
 		draw_rect(Rect2(16 + pip * 4, 21, 2, 2), Art.GOLD if ready else Color("263739"))
-	Art.pixel_text(self, Vector2(37, 23), "COMBO %02d" % _battle.combo, HORIZONTAL_ALIGNMENT_LEFT, 65, 4, Art.GOLD if _battle.resonance_ready else Art.MUTED)
+	Art.pixel_text(self, Vector2(37, 23), Lang.text("COMBO %02d", [_battle.combo]), HORIZONTAL_ALIGNMENT_LEFT, 65, 4, Art.GOLD if _battle.resonance_ready else Art.MUTED)
 	for pip in 3:
 		draw_rect(Rect2(214 + pip * 5, 21, 3, 2), Art.GOLD if _battle.exposed or pip < _battle.fracture else Color("263739"))
 	Art.pixel_text(self, Vector2(237, 23), "EXPOSED" if _battle.exposed else "FRACTURE", HORIZONTAL_ALIGNMENT_RIGHT, 67, 4, Art.GOLD if _battle.exposed else Art.MUTED)
@@ -894,7 +898,7 @@ func _draw_feedback() -> void:
 		return
 	if Time.get_ticks_msec() >= _feedback_until and _song_time_ms >= 0:
 		return
-	var text := _feedback
+	var text := Lang.text(_feedback, _feedback_args)
 	draw_rect(Rect2(107, 29, 106, 12), Color(0.02, 0.045, 0.05, 0.8))
 	Art.pixel_text(self, Vector2(109, 37), text, HORIZONTAL_ALIGNMENT_CENTER, 102, 6, Art.IVORY)
 
@@ -903,12 +907,15 @@ func _draw_footer() -> void:
 	Art.pixel_text(self, Vector2(16, 177), "D/F  STEP    J/K  CAST", HORIZONTAL_ALIGNMENT_LEFT, 120, 4, Art.MUTED)
 	if _practice_mode:
 		var focus: String = _practice.current_skill()
-		var drill_status: String = "NEXT %s" % DefenseDrill.SHORT_LABELS[_drill.requested] if _drill.requested != _drill.selected else _drill.status_text()
-		var hint := ("ARROWS %s TAB" % drill_status if _practice_defense else "T DEFENSE / TAB REPORT") if focus.is_empty() else "%s %d/2 / ESC TITLE" % [SKILL_NAMES[focus], _practice.counts[focus]]
+		var stats: Dictionary = _drill.report().rows[_drill.selected]
+		var drill_status := Lang.text("%s CLEAR", [DefenseDrill.SHORT_LABELS[_drill.selected]]) if stats.clear else Lang.text("%s P%d/%d", [DefenseDrill.SHORT_LABELS[_drill.selected], stats.streak, DefenseDrill.CLEAR_STREAK])
+		if _drill.requested != _drill.selected:
+			drill_status = Lang.text("NEXT %s", [DefenseDrill.SHORT_LABELS[_drill.requested]])
+		var hint := (Lang.text("ARROWS %s TAB", [drill_status]) if _practice_defense else "T DEFENSE / TAB REPORT") if focus.is_empty() else Lang.text("%s %d/2 / ESC TITLE", [SKILL_NAMES[focus], _practice.counts[focus]])
 		Art.pixel_text(self, Vector2(183, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 121, 4, Art.GOLD)
 	else:
 		var focus: String = _teaching_skill()
-		var hint := "P PAUSE  O OPTIONS  R RETRY" if focus.is_empty() else "PRACTICE %s / CAST %d" % [SKILL_NAMES[focus], _tutorial_casts[focus]]
+		var hint := "P PAUSE  O OPTIONS  R RETRY" if focus.is_empty() else Lang.text("PRACTICE %s / CAST %d", [SKILL_NAMES[focus], _tutorial_casts[focus]])
 		Art.pixel_text(self, Vector2(177, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 127, 4, Art.MUTED)
 
 func _teaching_skill() -> String:
@@ -940,6 +947,8 @@ func _clear_visual_effects() -> void:
 
 
 func _apply_options() -> void:
+	Lang.set_language(_options.get("language", "auto"))
+	queue_redraw()
 	for instrument in _music_players:
 		_music_players[instrument].volume_db = MUSIC_VOLUMES[instrument] + _volume_gain(float(_options.music_volume))
 	for sound_name in _sfx_players:
@@ -972,16 +981,19 @@ func _handle_options_input(key: int) -> void:
 			_overlay.show_pause()
 		return
 	if key == KEY_UP:
-		_options_index = posmod(_options_index - 1, 4)
+		_options_index = posmod(_options_index - 1, 5)
 	elif key == KEY_DOWN:
-		_options_index = posmod(_options_index + 1, 4)
+		_options_index = posmod(_options_index + 1, 5)
 	elif key in [KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_SPACE]:
 		var direction := -1.0 if key == KEY_LEFT else 1.0
-		var option: String = ["music_volume", "sfx_volume", "screen_shake", "fullscreen"][_options_index]
+		var option: String = ["music_volume", "sfx_volume", "screen_shake", "fullscreen", "language"][_options_index]
 		if _options_index < 2:
 			_options[option] = snappedf(clampf(float(_options[option]) + direction * 0.1, 0.0, 1.0), 0.1)
-		else:
+		elif _options_index < 4:
 			_options[option] = not bool(_options[option])
+		else:
+			var language_index := Lang.LANGUAGES.find(_options.language)
+			_options.language = Lang.LANGUAGES[posmod(language_index + int(direction), Lang.LANGUAGES.size())]
 		_apply_options()
 		var save_error := SettingsStore.save_settings(_options, _settings_path)
 		if save_error != OK:

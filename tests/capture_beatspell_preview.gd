@@ -1,5 +1,8 @@
 extends SceneTree
 
+const Lang = preload("res://scripts/beatspell/localization.gd")
+var _language := "en"
+
 
 func _init() -> void:
 	call_deferred("_capture")
@@ -8,7 +11,11 @@ func _init() -> void:
 func _capture() -> void:
 	root.size = Vector2i(1280, 720)
 	var stage = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
+	stage.set("_settings_path", "user://beatspell-preview-settings.json")
 	root.add_child(stage)
+	_language = "zh_CN" if "zh_CN" in OS.get_cmdline_user_args() else "en"
+	stage.get("_options").language = _language
+	stage.call("_apply_options")
 	await process_frame
 	await process_frame
 	if not _save_view("res://build/beatspell-title-preview.png"):
@@ -243,6 +250,8 @@ func _capture() -> void:
 
 
 func _save_view(path: String) -> bool:
+	if _language == "zh_CN":
+		path = path.replace("-preview.png", "-zh-preview.png")
 	var image := root.get_texture().get_image()
 	var error := image.save_png(path)
 	if error != OK:

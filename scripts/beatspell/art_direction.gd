@@ -1,5 +1,9 @@
 extends RefCounted
 
+const Lang = preload("res://scripts/beatspell/localization.gd")
+const CJK_SMALL = preload("res://assets/fonts/fusion-pixel/fusion-pixel-8px-proportional-zh_hans.otf")
+const CJK_LARGE = preload("res://assets/fonts/fusion-pixel/fusion-pixel-10px-proportional-zh_hans.otf")
+
 const INK := Color("091317")
 const GOLD := Color("b9a474")
 const IVORY := Color("e9e1ca")
@@ -28,6 +32,18 @@ const SMALL_GLYPHS := {
 
 
 static func pixel_text(canvas: CanvasItem, baseline: Vector2, text: String, alignment: int = 0, width: float = -1, font_size: int = 6, color: Color = IVORY) -> void:
+	text = Lang.text(text)
+	if needs_cjk(text):
+		var font: Font = CJK_SMALL if font_size <= 6 else CJK_LARGE
+		var pixels := 8 if font_size <= 6 else 20 if font_size >= 18 else 10
+		var measured := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x
+		var left := baseline.x
+		if width > 0 and alignment == HORIZONTAL_ALIGNMENT_CENTER:
+			left += (width - measured) / 2.0
+		elif width > 0 and alignment == HORIZONTAL_ALIGNMENT_RIGHT:
+			left += width - measured
+		canvas.draw_string(font, Vector2(roundf(left), roundf(baseline.y)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels, color)
+		return
 	var scale := maxi(1, int(font_size / 6.0))
 	var label := text.to_upper().replace("·", ".")
 	var text_width := (label.length() * 4 - 1) * scale
@@ -44,6 +60,13 @@ static func pixel_text(canvas: CanvasItem, baseline: Vector2, text: String, alig
 			for column in 3:
 				if (int(rows[row]) & (1 << (2 - column))) != 0:
 					canvas.draw_rect(Rect2(origin + Vector2((index * 4 + column) * scale, row * scale), Vector2.ONE * scale), color)
+
+
+static func needs_cjk(text: String) -> bool:
+	for index in text.length():
+		if text.unicode_at(index) > 255:
+			return true
+	return false
 
 
 static func panel(canvas: CanvasItem, rect: Rect2, accent: Color = GOLD, active: bool = false) -> void:

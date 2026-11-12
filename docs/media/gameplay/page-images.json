@@ -91,6 +91,16 @@
       "sha256": "432dc7af1c87e71502a70af419a23855325254908a2540eab1089c19d1d7860f",
       "width": 1200,
       "height": 940
+    },
+    {
+      "name": "languages",
+      "title": "中英文语言设置 / Language options",
+      "section": "设置与音频校准",
+      "path": "languages.png",
+      "reference": "library-file:fde1_bGliZmlsZV9Db2IweWIwMlF5QXZZMmF4eU5oOFZn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "c6d738f5d024083a1229ecb0118b83e3921bff12d122adc98499eb94bac3bde5",
+      "width": 1200,
+      "height": 940
     }
   ]
 }

@@ -1,6 +1,7 @@
 extends SceneTree
 
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
+const Lang = preload("res://scripts/beatspell/localization.gd")
 const TEST_PATH := "user://beatspell-flow-test-settings.json"
 var failures: Array[String] = []
 
@@ -10,6 +11,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	SettingsStore.save_settings(SettingsStore.DEFAULTS, TEST_PATH)
 	var stage = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
 	# Never read or write the player's actual settings.
 	stage.set("_settings_path", TEST_PATH)
@@ -100,6 +102,26 @@ func _run() -> void:
 	stage.call("_handle_options_input", KEY_LEFT)
 	var saved: Dictionary = SettingsStore.load_settings(TEST_PATH)
 	_check(is_equal_approx(saved.music_volume, stage.get("_options").music_volume), "volume change persists to isolated settings")
+	stage.get("_options").language = "auto"
+	stage.set("_options_index", 4)
+	var frozen_song: int = stage.get("_song_time_ms")
+	var frozen_command: Array = stage.get("_command").events.duplicate(true)
+	var frozen_report: Dictionary = stage.get("_drill").report()
+	stage.call("_show_feedback", "NEXT %s", Color.WHITE, 900, ["RUSH"])
+	stage.call("_handle_options_input", KEY_RIGHT)
+	_check(Lang.language == "zh_CN" and stage.get_node("BattleOverlay").options_data.language == "zh_CN", "language switches immediately in options")
+	_check(Lang.text(stage.get("_feedback"), stage.get("_feedback_args")) == "下轮 疾奏", "pending feedback translates after switching")
+	_check(stage.get("_paused") and stage.get("_song_time_ms") == frozen_song, "language switch retains pause and music position")
+	_check(stage.get("_command").events == frozen_command and stage.get("_drill").report() == frozen_report, "language switch retains command and training records")
+	_check(SettingsStore.load_settings(TEST_PATH).language == "zh_CN", "language preference persists")
+	stage.call("_handle_options_input", KEY_RIGHT)
+	_check(Lang.language == "en" and Lang.text(stage.get("_feedback"), stage.get("_feedback_args")) == "NEXT RUSH", "switching back restores English feedback")
+	var restarted = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
+	restarted.set("_settings_path", TEST_PATH)
+	root.add_child(restarted)
+	_check(restarted.get("_options").language == "en" and Lang.language == "en", "new scene reloads saved language")
+	restarted.queue_free()
+	stage.set("_options_index", 0)
 	stage.call("_handle_options_input", KEY_ESCAPE)
 	_check(stage.get("_paused") and stage.get_node("BattleOverlay").mode == "pause", "closing options preserves pause")
 	stage.call("_toggle_pause")

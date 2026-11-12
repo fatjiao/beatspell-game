@@ -1,6 +1,7 @@
 extends Control
 
 const Art = preload("res://scripts/beatspell/art_direction.gd")
+const Lang = preload("res://scripts/beatspell/localization.gd")
 const CalibrationMath = preload("res://scripts/settings/calibration.gd")
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const MAIN_SCENE := "res://scenes/beatspell/beatspell_battle.tscn"
@@ -22,7 +23,9 @@ var _metronome: AudioStreamPlayer
 func _ready() -> void:
 	_metronome = AudioStreamPlayer.new()
 	_metronome.stream = _make_tone(880.0, 0.035)
-	var sfx_level := float(SettingsStore.load_settings().sfx_volume)
+	var settings := SettingsStore.load_settings()
+	Lang.set_language(settings.language)
+	var sfx_level := float(settings.sfx_volume)
 	_metronome.volume_db = -8.0 + (linear_to_db(sfx_level) if sfx_level > 0 else -80.0)
 	add_child(_metronome)
 	_restart()
@@ -99,11 +102,11 @@ func _draw() -> void:
 	Art.pixel_text(self, center + Vector2(-4, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Art.INK)
 
 	if _finished:
-		Art.pixel_text(self, Vector2(52, 126), "CALIBRATION  %+d ms" % _result_ms, HORIZONTAL_ALIGNMENT_CENTER, 216, 14, Art.GOLD)
+		Art.pixel_text(self, Vector2(52, 126), Lang.text("CALIBRATION  %+d ms", [_result_ms]), HORIZONTAL_ALIGNMENT_CENTER, 216, 14, Art.GOLD)
 		Art.pixel_text(self, Vector2(50, 148), "ENTER  SAVE     R  RETRY", HORIZONTAL_ALIGNMENT_CENTER, 220, 8, Art.IVORY)
 	else:
 		Art.pixel_text(self, Vector2(45, 124), "PRESS D WITH EACH CLICK", HORIZONTAL_ALIGNMENT_CENTER, 230, 10, Color.WHITE)
-		Art.pixel_text(self, Vector2(80, 145), "%d / %d TAPS" % [_samples.size(), TARGET_SAMPLES], HORIZONTAL_ALIGNMENT_CENTER, 160, 9, Color("9d98c7"))
+		Art.pixel_text(self, Vector2(80, 145), Lang.text("%d / %d TAPS", [_samples.size(), TARGET_SAMPLES]), HORIZONTAL_ALIGNMENT_CENTER, 160, 9, Color("9d98c7"))
 	Art.pixel_text(self, Vector2(10, 171), "ESC  BACK", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("7d789f"))
 
 

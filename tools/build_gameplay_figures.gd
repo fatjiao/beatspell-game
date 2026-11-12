@@ -77,6 +77,7 @@ class Figure extends Control:
 			2: spells()
 			3: combat()
 			4: boss_cues()
+			9: languages()
 			5:
 				header("练习模式怎么用", "实机截图 · 无伤害练习，从三个基础术式开始")
 				shot("res://build/beatspell-practice-preview.png")
@@ -196,6 +197,22 @@ class Figure extends Control:
 		text(Vector2(48, 887), "防御训练中按左右键选择节奏，切换在下一小节生效。", 26, MUTED)
 
 
+	func languages() -> void:
+		header("中英文切换 / Language", "实机截图 · O → 语言 / LANGUAGE · 上下选择，左右切换")
+		for index in 2:
+			var path := "res://build/beatspell-options%s-preview.png" % ("-zh" if index == 1 else "")
+			if not screenshots.has(path):
+				screenshots[path] = ImageTexture.create_from_image(Image.load_from_file(ProjectSettings.globalize_path(path)))
+			center_text(Vector2(310 + index * 580, 153), ["English", "中文"][index], 28, TEAL)
+			draw_texture_rect(screenshots[path], Rect2(40 + index * 580, 180, 540, 304), false)
+		text(Vector2(65, 550), "自动 / AUTO：跟随系统语言；中文系统显示中文，其余显示英文。", 27)
+		text(Vector2(65, 598), "Follow the system language: Chinese for zh locales, English otherwise.", 24, MUTED)
+		text(Vector2(65, 671), "中文 / English：即时切换并保存；战斗进度和训练记录保留。", 27)
+		text(Vector2(65, 719), "Switch instantly and save locally; battle and training progress remain.", 24, MUTED)
+		text(Vector2(65, 792), "炎击 FLARE  ·  护盾 AEGIS  ·  回春 MEND", 29, TEAL)
+		text(Vector2(65, 857), "ESC 返回后仍暂停，按 P 继续。 / ESC back, then P to resume.", 25, MUTED)
+
+
 	func poses() -> void:
 		header("角色动作如何配合节奏", "实际姿态 PNG · 上排施法者，下排共鸣守卫")
 		for index in 3:
@@ -228,7 +245,7 @@ func _build() -> void:
 	var figure := Figure.new()
 	figure.size = Vector2(1200, 940)
 	viewport.add_child(figure)
-	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report"]
+	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report", "languages"]
 	var selected := OS.get_cmdline_user_args()
 	for index in names.size():
 		if not selected.is_empty() and names[index] not in selected:

@@ -6,7 +6,7 @@
 
 ## 项目文档
 
-- [公开玩法图文说明](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md)：无需登录即可查看和转发，包含 9 张界面截图与机制图解、完整规则、输入示例和数值
+- [中文玩法图文说明](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md) · [English gameplay guide](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.en.md)：无需登录即可转发，包含 10 张截图与机制图解、完整规则、输入示例和数值
 - [Pages 编辑版](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)：需要对应账号访问，与公开版同步维护
 - [开发接力指南](docs/PROJECT_HANDOFF.md)：新电脑配置、当前状态、目录结构、验证方法与 AI 接力提示词
 - [下一阶段开发计划](docs/plans/2026-11-05-beatspell-next-steps.md)：按优先级排列的 Demo 路线图和验收标准
@@ -33,7 +33,11 @@
 .\build-playtest.ps1
 ```
 
-脚本会运行 21 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.4.0.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+脚本会运行 22 组测试和完整场景流程测试，再生成 `build/BeatspellPlaytest-v0.5.0.zip`。解压后双击 `Launch Beatspell.cmd` 即可在没有安装 Godot 的 Windows 电脑上试玩。这个包使用随附的 Godot 运行器，仅用于内部测试；正式 Steam 包仍需安装 Godot 官方导出模板后生成。
+
+游戏支持中文和 English。按 `O` 打开设置，上下选“语言 / LANGUAGE”，左右选择自动／中文／English，即时生效并保存。自动跟随系统语言；战斗、练习、结算和校准均可切换。中英文术式对应：炎击 FLARE、护盾 AEGIS、回春 MEND。中文像素字体和授权随包内置。
+
+The game supports Chinese and English. Press `O`, select LANGUAGE with Up/Down, then use Left/Right to choose AUTO, 中文 or English. Changes apply instantly and save locally. AUTO follows Chinese system locales and falls back to English. Close with Esc, then press P to resume a paused run.
 
 当前美术方向是 **16-bit 像素风**：月夜观星台、中性施法者与黄铜守卫均采用像素素材，配合 320×180 实际渲染分辨率、最近邻采样及整数倍缩放。后续美术继续遵循像素风。素材与生成提示词见 [像素美术来源](assets/art/beatspell/pixel/README.md)。
 
@@ -49,7 +53,7 @@
 - `T`：标题界面进入练习模式
 - 左右方向键：防御训练中排队切换标准、切分和 Rush 节奏，下一小节生效
 - `Tab`：练习中查看训练报告；`Tab/Esc` 返回暂停页，`P` 继续
-- `O`：打开设置；方向键调整音乐、音效、屏幕震动与全屏，Esc 返回
+- `O`：打开设置；方向键调整音乐、音效、屏幕震动、全屏与语言，Esc 返回
 - `H`：打开术式手册，战斗会暂停
 - `Esc`：返回标题；标题界面退出
 

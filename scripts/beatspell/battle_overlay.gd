@@ -1,6 +1,7 @@
 extends Control
 
 const Art = preload("res://scripts/beatspell/art_direction.gd")
+const Lang = preload("res://scripts/beatspell/localization.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
 const BOSS_ART = preload("res://assets/art/beatspell/pixel/warden.png")
@@ -163,17 +164,17 @@ func _draw_result() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.72))
 	Art.panel(self, Rect2(32, 24, 256, 132), Art.GOLD, true)
 	Art.pixel_text(self, Vector2(48, 46), String(result_data.get("title", "RUN COMPLETE")), HORIZONTAL_ALIGNMENT_CENTER, 224, 14, color)
-	Art.pixel_text(self, Vector2(48, 63), "CAST %02d/%02d   P%02d G%02d X%02d" % [
+	Art.pixel_text(self, Vector2(48, 63), Lang.text("CAST %02d/%02d   P%02d G%02d X%02d", [
 		int(result_data.get("successful_casts", 0)), int(result_data.get("attempts", 0)),
 		int(result_data.get("perfect_casts", 0)), int(result_data.get("good_casts", 0)), int(result_data.get("failed_casts", 0)),
-	], HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.IVORY)
-	Art.pixel_text(self, Vector2(48, 78), "AVG %03dMS %s / RANK %s" % [
+	]), HORIZONTAL_ALIGNMENT_CENTER, 224, 7, Art.IVORY)
+	Art.pixel_text(self, Vector2(48, 78), Lang.text("AVG %03dMS %s / RANK %s", [
 		int(result_data.get("average_offset_ms", 0)), String(result_data.get("timing_bias", "ON TIME")), String(result_data.get("rank", "C")),
-	], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
+	]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
 	draw_line(Vector2(55, 85), Vector2(265, 85), Color(Art.GOLD, 0.3), 1)
-	Art.pixel_text(self, Vector2(48, 98), "MAX COMBO %02d / DAMAGE %02d" % [int(result_data.get("max_combo", 0)), int(result_data.get("damage", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.GOLD)
-	Art.pixel_text(self, Vector2(48, 112), "BLOCK %02d / PERFECT %02d / BREAK %02d" % [int(result_data.get("blocks", 0)), int(result_data.get("perfect_guards", 0)), int(result_data.get("breaks", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.TEAL)
-	Art.pixel_text(self, Vector2(48, 126), "HEAL %02d / TIME %02dS / BOSS %02d" % [int(result_data.get("healing", 0)), int(result_data.get("duration_seconds", 0)), int(result_data.get("boss_hp", 0))], HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
+	Art.pixel_text(self, Vector2(48, 98), Lang.text("MAX COMBO %02d / DAMAGE %02d", [int(result_data.get("max_combo", 0)), int(result_data.get("damage", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.GOLD)
+	Art.pixel_text(self, Vector2(48, 112), Lang.text("BLOCK %02d / PERFECT %02d / BREAK %02d", [int(result_data.get("blocks", 0)), int(result_data.get("perfect_guards", 0)), int(result_data.get("breaks", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.TEAL)
+	Art.pixel_text(self, Vector2(48, 126), Lang.text("HEAL %02d / TIME %02dS / BOSS %02d", [int(result_data.get("healing", 0)), int(result_data.get("duration_seconds", 0)), int(result_data.get("boss_hp", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
 	Art.pixel_text(self, Vector2(48, 148), "R AGAIN / H SPELLBOOK / ESC TITLE", HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.IVORY)
 
 
@@ -186,7 +187,7 @@ func _draw_phase_flash() -> void:
 	draw_rect(Rect2(0, 52, 320, 47), band_color)
 	var text_color := phase_color
 	text_color.a = alpha
-	Art.pixel_text(self, Vector2(64, 81), "PHASE %d · %s" % [phase_number, phase_name], HORIZONTAL_ALIGNMENT_CENTER, 192, 13, text_color)
+	Art.pixel_text(self, Vector2(64, 81), Lang.text("PHASE %d · %s", [phase_number, phase_name]), HORIZONTAL_ALIGNMENT_CENTER, 192, 13, text_color)
 
 
 func _draw_drill_report() -> void:
@@ -202,14 +203,14 @@ func _draw_drill_report() -> void:
 		var y := 75 + index * 17
 		if index == int(drill_data.get("selected", -1)):
 			draw_rect(Rect2(35, y - 8, 250, 13), Color(Art.TEAL, 0.12))
-		Art.pixel_text(self, Vector2(columns[0], y), row.label + (" OK" if row.clear else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.GOLD if row.clear else Art.IVORY)
+		Art.pixel_text(self, Vector2(columns[0], y), Lang.text("%s OK", [row.label]) if row.clear else Lang.text(row.label), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.GOLD if row.clear else Art.IVORY)
 		var values := [row.attempts, row.blocks, row.perfect, row.best]
 		for column in values.size():
 			Art.pixel_text(self, Vector2(columns[column + 1], y), "%02d" % int(values[column]), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Art.TEAL)
 	var last: String = drill_data.get("last_outcome", "NO ATTACKS YET")
 	var age := int(drill_data.get("last_age_ms", -1))
 	if age >= 0:
-		last += " %dMS" % age
+		last = Lang.text("%s %dMS", [last, age])
 	Art.pixel_text(self, Vector2(40, 132), last, HORIZONTAL_ALIGNMENT_CENTER, 240, 6, Art.GOLD)
 	Art.pixel_text(self, Vector2(40, 151), "TAB / ESC BACK . P RESUME", HORIZONTAL_ALIGNMENT_CENTER, 240, 5, Art.MUTED)
 
@@ -217,9 +218,9 @@ func _draw_options() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.92))
 	Art.panel(self, Rect2(49, 24, 222, 132), Art.GOLD, true)
 	Art.pixel_text(self, Vector2(68, 43), "OPTIONS", HORIZONTAL_ALIGNMENT_CENTER, 184, 12, Art.IVORY)
-	var labels := ["MUSIC", "SOUND FX", "SCREEN SHAKE", "FULLSCREEN"]
-	for index in 4:
-		var y := 65 + index * 19
+	var labels := ["MUSIC", "SOUND FX", "SCREEN SHAKE", "FULLSCREEN", "LANGUAGE"]
+	for index in labels.size():
+		var y := 61 + index * 17
 		if index == selected_option:
 			draw_rect(Rect2(59, y - 8, 202, 15), Color(Art.TEAL, 0.12))
 			Art.pixel_text(self, Vector2(62, y), ">", HORIZONTAL_ALIGNMENT_LEFT, 8, 6, Art.GOLD)
@@ -228,9 +229,11 @@ func _draw_options() -> void:
 		if index < 2:
 			var setting: String = ["music_volume", "sfx_volume"][index]
 			value = "%d/10" % int(round(float(options_data.get(setting, 0.8)) * 10))
-		else:
+		elif index < 4:
 			var setting: String = ["screen_shake", "fullscreen"][index - 2]
 			value = "ON" if options_data.get(setting, index == 2) else "OFF"
+		else:
+			value = Lang.language_label(options_data.get("language", "auto"))
 		Art.pixel_text(self, Vector2(201, y), value, HORIZONTAL_ALIGNMENT_CENTER, 42, 6, Art.TEAL)
 	Art.pixel_text(self, Vector2(65, 147), "ARROWS ADJUST / ESC BACK", HORIZONTAL_ALIGNMENT_CENTER, 190, 5, Art.MUTED)
 

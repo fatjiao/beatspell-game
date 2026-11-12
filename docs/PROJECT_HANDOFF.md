@@ -2,23 +2,27 @@
 
 这份文档是换电脑或开启新 AI 开发任务时的总入口。当前有效方向是 **Beatspell 节奏施法 Boss 战**；`scenes/prototype/` 下的《一个人的乐队》属于早期原型，不是当前主线。
 
-当前版本为 `v0.4.0-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。背景和标题素材位于 `assets/art/beatspell/pixel/`，战斗使用 `pixel/poses/` 下六张独立姿态帧。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.4.0.zip`。
+当前版本为 `v0.5.0-internal`。美术方向必须保持 **16-bit 像素风**；上一轮手绘方向已撤回。背景和标题素材位于 `assets/art/beatspell/pixel/`，战斗使用 `pixel/poses/` 下六张独立姿态帧。采用实际 320×180 viewport、最近邻采样和整数倍缩放，后续不要改回线性过滤或手绘立绘。重新构建生成 `build/BeatspellPlaytest-v0.5.0.zip`。
+
+v0.5.0 完成中英文界面：设置第五项为自动／中文／English，默认跟随系统，中文系统使用简体中文，其余回退英文，偏好立即保存。`localization.gd` 管理文案模板、参数与语言解析；`Art.pixel_text` 绘制时翻译静态文案，动态文本先使用 `Lang.text(template, args)`。战斗反馈保存模板和原始参数，不保存已翻译字符串，保证暂停切换后文字更新。模型、报告原始字段和术式标识保持语言无关；不得在核心逻辑中翻译标识。
+
+中文使用内置 Fusion Pixel 8px／10px 简体 OTF，版本 2026.11.10；英文保留手写字模。字体导入禁用抗锯齿、系统回退，使用整数尺寸。完整源授权位于 `assets/fonts/fusion-pixel/`，构建复制到 `FONT_LICENSES/`；更改字体时保留上游授权。中文所有词条已验证两套字体的 glyph 覆盖，中英文关键页面已截图检查。
 
 v0.4.0 完成专项防御训练：左右键排队切换 Standard / Syncopated / Rush，下一小节生效；进入时等待完整未来预警。每种模式独立计数，连续 3 次精准格挡记为通过。Tab 打开暂停式报告，Tab/Esc 关闭到暂停页，P 可直接继续，R 可直接重开。核心统计在 `defense_drill.gd`；音频和绘制共同使用 director 的 pattern override，不能只改其中一路。模式切换保留本轮统计，重开重置课程和统计。
 
 v0.4.0 同时修复超时/局末未完成指令漏计失败，并对音频校准做最近拍去重。超时不虚增物理输入；已清空指令不重复计失败。校准 `sample_for_tap` 拒绝倒计时、同拍和倒退拍输入，仍采样 8 个不同拍，保留原滤波与偏移限制。
 
-最新验证：21 组测试、扩展场景流程、三模式/报告截图与导出包启动检查通过；`build/BeatspellPlaytest-v0.4.0.zip` 已生成。Pages 与本地九图正文、图片引用和上传字节摘要已核对。接下来优先收集真实设备与新手试玩数据，再继续细化动作和混音；当前测试没有替代真实听感验证。
+最新验证：22 组测试、扩展场景流程与导出包启动检查通过；`build/BeatspellPlaytest-v0.5.0.zip` 已生成。新增语言回退、格式参数一致性、缺字、旧设置迁移、暂停热切换、状态保留及重启持久化验证；流程和截图使用独立设置路径。Pages 与本地十图正文、英文指南入口和图片摘要已核对。接下来优先收集真实设备与新手试玩数据，再继续细化动作和混音；当前测试没有替代真实听感验证。
 
 最新美术/声音批次：`pixel_effects.gd` 包含手工像素特效，`assets/sfx/beatspell/` 包含 14 个原创 WAV，`sound_bank.gd` 与 `tools/generate_sfx.gd` 可重建。角色动作在图像工具连接失败期间改用 `tools/build_pose_frames.gd` 本地编辑原素材，产出六张实际 PNG；运行方法见 `assets/art/beatspell/pixel/poses/README.md`。随后在线图像连接已恢复并通过真实生成验证，但这六张已接入素材仍为本地派生图，不能改写它们的来源记录。
 
-玩法图文文档：[在线 Page](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)，仓库副本为 `docs/GAMEPLAY.md`。用户明确要求图文结合，当前有 9 张界面截图与机制图解，保存在 `docs/media/gameplay/`，重建方法见该目录 README；上传映射见 `page-images.json`。每批涉及玩法、数值或界面的变更都要同步更新两处的相关文字与配图，在线编辑前先读取并保留用户修改；同步失败时明确记录待同步部分。相关规则已写入根目录 `AGENTS.md`，适用于开发交付，不是后台定时任务。
+玩法图文文档：[在线 Page](https://chatgpt.com/space/page_3464b9beb91481919abe7d81d68d2251)，仓库中文副本为 `docs/GAMEPLAY.md`，英文版为 `docs/GAMEPLAY.en.md`。用户明确要求图文结合，当前有 10 张界面截图与机制图解，保存在 `docs/media/gameplay/`，重建方法见该目录 README；上传映射见 `page-images.json`。每批涉及玩法、数值或界面的变更都要同步更新两种语言及 Page 的相关文字与配图，在线编辑前先读取并保留用户修改；同步失败时明确记录待同步部分。相关规则已写入根目录 `AGENTS.md`，适用于开发交付，不是后台定时任务。
 
 对外转发使用[公开图文阅读版](https://github.com/fatjiao/beatspell-game/blob/main/docs/GAMEPLAY.md)。仓库已公开，文档与图片已通过无凭据访问验证，不需要 ChatGPT 账号；更新该文件和全部配图并推送到 main 后，公开版随之更新。Pages 编辑版保留原访问权限。
 
 战斗系统包括精准格挡、三格破防、四连击共鸣与 H 术式手册。规则与有效伤害/治疗账本均在 `battle_model.gd`；精准格挡要求场景提供输入与攻击的音乐时间，不使用墙钟。Boss 生命值现为 60，教学九小节固定第一阶段。
 
-标题 `T` 可进入独立练习，`O` 打开设置；音乐/音效音量、全屏与震动设置本地保存。设置字段在 `scripts/settings/settings_store.gd`，旧版本设置文件会自动补齐默认值。流程测试使用独立测试设置文件，不改玩家设置。
+标题 `T` 可进入独立练习，`O` 打开设置；音乐/音效音量、全屏、震动与语言设置本地保存。设置字段在 `scripts/settings/settings_store.gd`，旧版本设置文件会自动补齐默认值。流程测试使用独立测试设置文件，不改玩家设置。
 
 ## 1. 项目目标与约束
 
@@ -50,9 +54,9 @@ v0.4.0 同时修复超时/局末未完成指令漏计失败，并对音频校准
 - `build-playtest.ps1` 可生成无需安装 Godot 的便携内部试玩压缩包。
 - 暂停、重开和音频延迟校准。
 - 节奏参数与音效混音配置已经集中管理，Boss 预警音不会在同一拍重复触发。
-- 纯逻辑、音效采样、动作帧和训练统计测试；当前 21 个测试组，以及扩展后的 `tests/test_playtest_flow.gd` 场景流程测试。
+- 纯逻辑、音效采样、动作帧、训练统计与本地化测试；当前 22 个测试组，以及扩展后的 `tests/test_playtest_flow.gd` 场景流程测试。
 - 无伤害、无时限的练习模式，三种术式每种两次成功后自由练习。
-- 音乐、音效、震动与全屏设置；暂停后保留动画剩余时间。
+- 音乐、音效、震动、全屏与中英文语言设置；暂停后保留动画剩余时间。
 - 三种专项防御节奏、每模式独立记录和暂停式训练报告。
 - 指令超时及局末未完成计入失败尝试，校准同拍输入去重。
 
@@ -185,11 +189,11 @@ git status
 建议每个可验证改动单独提交：
 
 ```powershell
-git switch -c feature/short-name
+git switch -c codex/short-name
 # 修改并测试
 git add <明确的文件>
 git commit -m "feat: describe the change"
-git push -u origin feature/short-name
+git push -u origin codex/short-name
 ```
 
 如果只是本人在两台电脑之间直接接力，也可以继续使用 `main`，但必须先 `git pull --ff-only`，完成后立即测试、提交并推送。不要提交 `.tools/`、`.godot/` 或 `build/`。
