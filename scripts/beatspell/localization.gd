@@ -3,9 +3,19 @@ extends RefCounted
 ## UI strings are translated at draw time; gameplay records retain stable identifiers.
 const LANGUAGES := ["auto", "zh_CN", "en"]
 const ZH := {
+	"RITUAL": "仪式", "DUEL": "决斗", "GAUNTLET": "试炼",
+	"< %s >": "< %s >", "GUIDED / 90S": "含教学 / 90秒",
+	"%s / %s": "%s / %s",
+	"NO LESSONS / 90S": "直接决斗 / 90秒", "ROTATING CUES / 90S": "预警轮换 / 90秒",
+	"ARROWS MODE / ENTER START / V RECORDS": "左右选模式 / ENTER 开始 / V 战绩",
+	"RECORD BOOK": "战绩簿", "MODE": "模式", "WIN/RUN": "胜/场",
+	"RANK": "评级", "BEST": "最快", "TIME": "用时", "COMBO": "连击",
+	"BEST COMBO %s": "最高连击 %s", "NEW / %s": "新纪录 / %s",
+	"RECORD SAVE FAILED": "战绩保存失败", "V / ESC BACK": "V / ESC 返回",
+	"R AGAIN / V RECORDS / ESC TITLE": "R 重开 / V 战绩 / ESC 标题",
 	"A RITUAL IN THREE MOVEMENTS": "三式成章，以拍施法",
 	"LISTEN. WEAVE. SURVIVE.": "聆听节拍，结式求生",
-	"BEGIN RITUAL": "开始仪式",
+	"BEGIN BATTLE": "开始战斗",
 	"T PRACTICE / O OPTIONS / C CALIBRATE": "T 练习 / O 设置 / C 校准",
 	"H SPELLBOOK / ESC LEAVE": "H 术式 / ESC 退出",
 	"PAUSED": "已暂停", "P  RESUME": "P 继续",

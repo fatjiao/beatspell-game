@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Lang = preload("res://scripts/beatspell/localization.gd")
+const Records = preload("res://scripts/beatspell/run_records.gd")
 var _language := "en"
 
 
@@ -11,11 +12,14 @@ func _init() -> void:
 func _capture() -> void:
 	root.size = Vector2i(1280, 720)
 	var stage = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
-	stage.set("_settings_path", "user://beatspell-preview-settings.json")
+	stage.set("_settings_path", "res://build/beatspell-preview-settings.json")
+	stage.set("_records_path", "res://build/beatspell-preview-records.json")
 	root.add_child(stage)
 	_language = "zh_CN" if "zh_CN" in OS.get_cmdline_user_args() else "en"
 	stage.get("_options").language = _language
 	stage.call("_apply_options")
+	stage.set("_encounter", "ritual")
+	stage.get_node("BattleOverlay").selected_encounter = "ritual"
 	await process_frame
 	await process_frame
 	if not _save_view("res://build/beatspell-title-preview.png"):
@@ -243,6 +247,30 @@ func _capture() -> void:
 	if not _save_view("res://build/beatspell-strike-preview.png"):
 		quit(1)
 		return
+	for encounter in ["duel", "gauntlet"]:
+		stage.set("_encounter", encounter)
+		stage.call("_show_title")
+		await process_frame
+		await process_frame
+		_save_view("res://build/beatspell-title-%s-preview.png" % encounter)
+	stage.call("_start_run")
+	stage.set("_records", Records.empty_records())
+	stage.set("_song_time_ms", 40000)
+	stage.set("_bar_index", 19)
+	stage.set("_active_phase", 3)
+	stage.get("_battle").boss_hp = 0
+	stage.get("_battle").total_damage = 60
+	stage.get("_battle").max_combo = 18
+	stage.get("_performance").record_input({"grade": "perfect", "offset_ms": 15})
+	stage.get("_performance").record_attempt("fireball", "perfect")
+	stage.call("_finish_battle", "BEAST DISPELLED", true)
+	await process_frame
+	await process_frame
+	_save_view("res://build/beatspell-record-result-preview.png")
+	stage.get_node("BattleOverlay").show_records(stage.get("_records"), "gauntlet")
+	await process_frame
+	await process_frame
+	_save_view("res://build/beatspell-records-preview.png")
 	stage.queue_free()
 	await process_frame
 	print("Saved beatspell previews.")

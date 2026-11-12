@@ -1,6 +1,6 @@
 # Gameplay guide figures
 
-Ten 1200×940 PNG figures accompany the online Page, `docs/GAMEPLAY.md` and `docs/GAMEPLAY.en.md`. They combine the game's existing preview captures with code-native labels and diagrams. Original game textures and captures are not overwritten. These are documentation assets; `docs/.gdignore` keeps them out of Godot's runtime asset imports.
+Twelve 1200×940 PNG figures accompany the online Page, `docs/GAMEPLAY.md` and `docs/GAMEPLAY.en.md`. They combine the game's existing preview captures with code-native labels and diagrams. Original game textures and captures are not overwritten. These are documentation assets; `docs/.gdignore` keeps them out of Godot's runtime asset imports.
 
 | File | Subject |
 |---|---|
@@ -10,10 +10,12 @@ Ten 1200×940 PNG figures accompany the online Page, `docs/GAMEPLAY.md` and `doc
 | guard-and-bonuses.png | Guard, fracture, exposure and resonance relationships |
 | boss-cues.png | Standard, syncopated and rush warning times |
 | practice.png | Practice mode and lesson progress |
-| results.png | Result panel and interpretation |
+| results.png | Result panel, per-run statistics and new-record badges |
 | character-poses.png | Actual caster and Warden pose textures |
 | defense-report.png | Three defense practice patterns and the paused training report |
 | languages.png | Chinese and English settings, preference and spell-name correspondence |
+| encounters.png | Ritual / Duel / Gauntlet title selection and their rule differences |
+| records.png | Per-mode completed runs, wins, best rank, fastest clear and combo |
 
 Rebuild from the repository root with a graphical Godot runtime:
 
@@ -25,7 +27,7 @@ Rebuild from the repository root with a graphical Godot runtime:
 
 The first two commands capture reproducible English and Chinese UI states, including sample result statistics; Chinese captures use a `-zh-preview.png` suffix. Captures use an isolated settings path and do not change player preferences. The final command uses a separate 1200×940 viewport, nearest-neighbor screenshot rendering, and local system fonts for diagram labels. Diagram system fonts are not redistributed; the game's separately bundled Fusion Pixel font notices live in `assets/fonts/fusion-pixel/`. Do not run the figure renderer headlessly; it needs graphical rendering to produce the images.
 
-To rebuild only affected figures, append their names after `--`, for example `-- defense-report boss-cues results`. This preserves unchanged figure bytes and their existing uploads.
+To rebuild only affected figures, append their names after `--`, for example `-- encounters records results`. This preserves unchanged figure bytes and their existing uploads. The v0.6.0 batch adds `encounters.png` and `records.png` and refreshes `results.png`; reuse the existing upload references for all unchanged figures.
 
 When gameplay, timing or layout changes, revise the diagram labels and coordinates in the generator as needed, rebuild and visually inspect the affected PNGs. The existing screenshots are under ignored `build/`; another computer must run the capture command first.
 

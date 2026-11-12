@@ -2,7 +2,7 @@ extends SceneTree
 
 const SettingsStore = preload("res://scripts/settings/settings_store.gd")
 const Lang = preload("res://scripts/beatspell/localization.gd")
-const TEST_PATH := "user://beatspell-flow-test-settings.json"
+const TEST_PATH := "res://build/beatspell-flow-test-settings.json"
 var failures: Array[String] = []
 
 
@@ -15,6 +15,7 @@ func _run() -> void:
 	var stage = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
 	# Never read or write the player's actual settings.
 	stage.set("_settings_path", TEST_PATH)
+	stage.set("_records_path", "res://build/beatspell-flow-test-records.json")
 	root.add_child(stage)
 	await process_frame
 	stage.set_process(false)
@@ -118,6 +119,7 @@ func _run() -> void:
 	_check(Lang.language == "en" and Lang.text(stage.get("_feedback"), stage.get("_feedback_args")) == "NEXT RUSH", "switching back restores English feedback")
 	var restarted = load("res://scenes/beatspell/beatspell_battle.tscn").instantiate()
 	restarted.set("_settings_path", TEST_PATH)
+	restarted.set("_records_path", "res://build/beatspell-flow-test-records.json")
 	root.add_child(restarted)
 	_check(restarted.get("_options").language == "en" and Lang.language == "en", "new scene reloads saved language")
 	restarted.queue_free()
@@ -171,6 +173,7 @@ func _run() -> void:
 	await process_frame
 	if FileAccess.file_exists(TEST_PATH):
 		DirAccess.remove_absolute(TEST_PATH)
+	DirAccess.remove_absolute("res://build/beatspell-flow-test-records.json")
 	if failures.is_empty():
 		print("PASS: playtest_flow (practice, options, pause, save, title, restart, result)")
 		quit(0)

@@ -1,6 +1,7 @@
 extends RefCounted
 
 const Lang = preload("res://scripts/beatspell/localization.gd")
+const Encounters = preload("res://scripts/beatspell/encounter_rules.gd")
 
 const SETTINGS_PATH := "user://settings.json"
 const DEFAULTS := {
@@ -11,6 +12,7 @@ const DEFAULTS := {
 	"screen_shake": true,
 	"fullscreen": false,
 	"language": "auto",
+	"encounter": "ritual",
 }
 
 
@@ -57,6 +59,7 @@ static func _normalize(settings: Dictionary) -> Dictionary:
 		"screen_shake": _boolean(settings.get("screen_shake", true), true),
 		"fullscreen": _boolean(settings.get("fullscreen", false), false),
 		"language": Lang.normalize(settings.get("language", "auto")),
+		"encounter": Encounters.normalize(settings.get("encounter", "ritual")),
 	}
 
 

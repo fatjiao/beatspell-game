@@ -77,8 +77,8 @@
       "title": "结算画面实机说明",
       "section": "结算统计与评级",
       "path": "results.png",
-      "reference": "library-file:fde1_bGliZmlsZV9KZmdMaDcxM2FqVzV6U2NSRG40d3Vn_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "4a802420a016591399399bd0a5a89ad8995869bdc69af72fa6cf5247179fcf89",
+      "reference": "library-file:fde1_bGliZmlsZV9YeTZ4ZVlrZ1llUEVFWUVEeGtCS2d3_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "b14d2598c981a5ddd49921b18d0e80e071774e6279776bc432181cfbd5bb38b6",
       "width": 1200,
       "height": 940
     },
@@ -99,6 +99,26 @@
       "path": "languages.png",
       "reference": "library-file:fde1_bGliZmlsZV9Db2IweWIwMlF5QXZZMmF4eU5oOFZn_FileDrive_89406de7bf3481919e73d5472553c009",
       "sha256": "c6d738f5d024083a1229ecb0118b83e3921bff12d122adc98499eb94bac3bde5",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "encounters",
+      "title": "战斗模式选择",
+      "section": "三种战斗模式",
+      "path": "encounters.png",
+      "reference": "library-file:fde1_bGliZmlsZV9RdF9ZcUFpX1NyODcybjVqamlOdkdB_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "8cf56d948de409d0fbc48366adb31b4d914b055cd7f345fe5122eb6b4eb89d40",
+      "width": 1200,
+      "height": 940
+    },
+    {
+      "name": "records",
+      "title": "本地战绩",
+      "section": "本地战绩与重复挑战",
+      "path": "records.png",
+      "reference": "library-file:fde1_bGliZmlsZV9lNjdjRFhfaTlhT25sblNMSTVxYUZR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "fce4ca343830f9231a6ed553309f0296a0373c7ed22fdb1e4a9cb10f7754dca6",
       "width": 1200,
       "height": 940
     }

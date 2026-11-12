@@ -15,6 +15,8 @@ const DefenseDrill = preload("res://scripts/beatspell/defense_drill.gd")
 const Effects = preload("res://scripts/beatspell/pixel_effects.gd")
 const Art = preload("res://scripts/beatspell/art_direction.gd")
 const Lang = preload("res://scripts/beatspell/localization.gd")
+const Encounters = preload("res://scripts/beatspell/encounter_rules.gd")
+const Records = preload("res://scripts/beatspell/run_records.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_FRAMES := {
 	"idle": preload("res://assets/art/beatspell/pixel/poses/caster_idle.png"),
@@ -72,6 +74,12 @@ var _settings_path := SettingsStore.SETTINGS_PATH
 var _options_open := false
 var _guide_open := false
 var _options_index := 0
+var _encounter := "ritual"
+var _records_path := Records.RECORDS_PATH
+var _records: Dictionary = {}
+var _records_open := false
+var _record_flags: Dictionary = {}
+var _record_save_failed := false
 var _practice_mode := false
 var _practice_defense := false
 var _defense_start_bar := 0
@@ -114,6 +122,8 @@ var _stage_shake_strength := 0.0
 
 func _ready() -> void:
 	_options = SettingsStore.load_settings(_settings_path)
+	_encounter = _options.encounter
+	_records = Records.load_records(_records_path)
 	_timing.input_offset_ms = int(_options.audio_offset_ms)
 	_audio_ready = _setup_music()
 	_setup_sfx()
@@ -151,6 +161,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_button_press: bool = event is InputEventJoypadButton and event.pressed
 	if not is_key_press and not is_button_press:
 		return
+	if _records_open:
+		if is_key_press and event.physical_keycode in [KEY_V, KEY_ESCAPE]:
+			_records_open = false
+			_restore_menu_overlay()
+		get_viewport().set_input_as_handled()
+		return
 	if _drill_report_open:
 		if is_key_press and event.physical_keycode in [KEY_TAB, KEY_ESCAPE]:
 			_drill_report_open = false
@@ -182,6 +198,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if is_key_press and event.physical_keycode == KEY_O:
 		_open_options()
+		get_viewport().set_input_as_handled()
+		return
+	if (_waiting_to_start or _finished) and is_key_press and event.physical_keycode == KEY_V:
+		_records_open = true
+		_overlay.show_records(_records, _encounter)
+		get_viewport().set_input_as_handled()
+		return
+	if _waiting_to_start and is_key_press and event.physical_keycode in [KEY_LEFT, KEY_RIGHT]:
+		var modes := ["ritual", "duel", "gauntlet"]
+		var direction := -1 if event.physical_keycode == KEY_LEFT else 1
+		_encounter = modes[posmod(modes.find(_encounter) + direction, modes.size())]
+		_options.encounter = _encounter
+		_overlay.title_save_failed = SettingsStore.save_settings(_options, _settings_path) != OK
+		_overlay.selected_encounter = _encounter
 		get_viewport().set_input_as_handled()
 		return
 	if _practice_mode and is_key_press and event.physical_keycode == KEY_TAB:
@@ -242,6 +272,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _show_title() -> void:
+	_records_open = false
 	_drill_report_open = false
 	_guide_open = false
 	_options_open = false
@@ -265,11 +296,15 @@ func _show_title() -> void:
 	for player in _music_players.values():
 		player.stop()
 		player.stream_paused = false
+	_overlay.selected_encounter = _encounter
 	_overlay.show_title()
 	queue_redraw()
 
 
 func _start_run(practice: bool = false) -> void:
+	_records_open = false
+	_record_flags.clear()
+	_record_save_failed = false
 	_drill_report_open = false
 	_drill.reset()
 	_defense_start_bar = 0
@@ -340,9 +375,7 @@ func _update_bar() -> void:
 			if _practice_defense:
 				_show_feedback("%s DRILL", Art.GOLD, 700, [DefenseDrill.LABELS[_drill.selected]])
 		return
-	var next_phase: int = _director.phase_for_health(_battle.boss_hp, _battle.MAX_BOSS_HP)
-	if _bar_index < 9:
-		next_phase = 1
+	var next_phase := Encounters.phase(_encounter, _bar_index, _battle.boss_hp, _battle.MAX_BOSS_HP)
 	if next_phase != _active_phase:
 		_active_phase = next_phase
 		var phase_color := Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
@@ -425,7 +458,7 @@ func _cast_skill(skill: String, grade: String) -> void:
 
 func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
 	var impact := impact_time_ms if impact_time_ms >= 0 else _adjusted_song_time()
-	var damage := 0 if _practice_mode else _director.attack_damage(_active_phase)
+	var damage := 0 if _practice_mode else Encounters.attack_damage(_encounter, _active_phase)
 	var result: Dictionary = _battle.boss_attack(damage, impact)
 	var drill_clear := false
 	if _practice_mode and _practice_defense:
@@ -457,7 +490,7 @@ func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
 func _is_attack_bar(bar: int) -> bool:
 	if _practice_mode:
 		return _practice_defense and bar >= _defense_start_bar and (bar + 1) % 2 == 0
-	return _director.is_attack_bar(bar, _active_phase)
+	return Encounters.is_attack_bar(_encounter, bar, _active_phase)
 
 
 func _adjusted_song_time() -> int:
@@ -504,6 +537,8 @@ func _show_feedback(text: String, color: Color, duration_ms: int, args: Array = 
 
 
 func _finish_battle(text: String, victory: bool) -> void:
+	if _finished:
+		return
 	if _command.is_active():
 		_performance.record_attempt("", "miss")
 		_command.reset()
@@ -513,6 +548,12 @@ func _finish_battle(text: String, victory: bool) -> void:
 	_feedback_color = Color("69f0a5") if victory else Color("ff668e")
 	for player in _music_players.values():
 		player.stream_paused = true
+	if not _practice_mode:
+		_record_flags = Records.record_run(_records, _encounter, {
+			"rank": _performance.rank(), "victory": victory,
+			"duration_ms": clampi(_song_time_ms, 0, BATTLE_DURATION_MS), "max_combo": _battle.max_combo,
+		})
+		_record_save_failed = Records.save_records(_records, _records_path) != OK
 	_overlay.show_result(_result_overlay_data())
 
 
@@ -538,6 +579,9 @@ func _result_overlay_data() -> Dictionary:
 		"perfect_guards": _battle.perfect_guards,
 		"breaks": _battle.break_count,
 		"duration_seconds": int(maxi(0, _song_time_ms) / 1000),
+		"encounter": Encounters.label(_encounter),
+		"record_flags": _record_flags.duplicate(),
+		"record_save_failed": _record_save_failed,
 	}
 
 
@@ -652,6 +696,8 @@ func _draw_health() -> void:
 		for tick in 6:
 			draw_line(Vector2(x + tick * 18, 14), Vector2(x + tick * 18, 17), Color(Art.INK, 0.8), 0.5)
 	var label := "AEGIS READY" if _battle.shield_active else "I  /  AWAKENING" if _active_phase == 1 else "II  /  FRACTURE" if _active_phase == 2 else "III  /  OVERDRIVE"
+	if not _practice_mode and not _battle.shield_active and _encounter != "ritual":
+		label = Lang.text("%s / %s", [Encounters.label(_encounter), _director.phase_name(_active_phase)])
 	if _practice_mode:
 		label = Lang.text("DRILL / %s", [DefenseDrill.SHORT_LABELS[_drill.selected]]) if _practice_defense else "PRACTICE / NO DAMAGE"
 	Art.pixel_text(self, Vector2(111, 12), label, HORIZONTAL_ALIGNMENT_CENTER, 98, 5, Art.TEAL if _battle.shield_active else Art.GOLD)
@@ -759,7 +805,7 @@ func _draw_boss() -> void:
 
 
 func _attack_pattern_color() -> Color:
-	match _practice_pattern() if _practice_defense else _director.attack_pattern(_bar_index, _active_phase):
+	match _practice_pattern():
 		"syncopated":
 			return Color("ff7f66")
 		"rush":
@@ -919,7 +965,7 @@ func _draw_footer() -> void:
 		Art.pixel_text(self, Vector2(177, 177), hint, HORIZONTAL_ALIGNMENT_RIGHT, 127, 4, Art.MUTED)
 
 func _teaching_skill() -> String:
-	return _practice.current_skill() if _practice_mode else _director.tutorial_skill(_bar_index)
+	return _practice.current_skill() if _practice_mode else Encounters.tutorial_skill(_encounter, _bar_index)
 
 
 func _read_song_clock() -> int:
@@ -1005,11 +1051,11 @@ func _visual_now() -> int:
 	return _pause_started_ticks if _paused else Time.get_ticks_msec()
 
 func _attack_cue_index(time_ms: int) -> int:
-	return _director.attack_cue_index(time_ms, _bar_index, _active_phase, _practice_mode and _practice_defense, _practice_pattern())
+	return _director.attack_cue_index(time_ms, _bar_index, _active_phase, _is_attack_bar(_bar_index), _practice_pattern()) if _is_attack_bar(_bar_index) else -1
 
 
 func _practice_pattern() -> String:
-	return _drill.pattern() if _practice_mode and _practice_defense else ""
+	return _drill.pattern() if _practice_mode and _practice_defense else Encounters.attack_pattern(_encounter, _bar_index, _active_phase)
 
 
 func _restore_menu_overlay() -> void:

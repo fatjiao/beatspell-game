@@ -3,6 +3,8 @@ extends SceneTree
 
 func _init() -> void:
 	var suites := [
+		{"name": "encounter_rules", "script": preload("res://tests/test_encounter_rules.gd")},
+		{"name": "run_records", "script": preload("res://tests/test_run_records.gd")},
 		{"name": "localization", "script": preload("res://tests/test_localization.gd")},
 		{"name": "smoke", "script": preload("res://tests/test_smoke.gd")},
 		{"name": "rhythm_judge", "script": preload("res://tests/test_rhythm_judge.gd")},

@@ -6,7 +6,8 @@ $godotConsole = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_c
 $buildRoot = Join-Path $projectRoot 'build\BeatspellPlaytest'
 $packPath = Join-Path $buildRoot 'BeatspellPlaytest.pck'
 $runnerPath = Join-Path $buildRoot 'BeatspellPlaytest.exe'
-$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.5.0.zip'
+$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.6.0.zip'
+$godotLog = Join-Path $projectRoot 'build\godot-playtest-build.log'
 
 foreach ($required in @($godotGui, $godotConsole)) {
 	if (-not (Test-Path -LiteralPath $required)) {
@@ -14,15 +15,19 @@ foreach ($required in @($godotGui, $godotConsole)) {
 	}
 }
 
-& $godotConsole --headless --path $projectRoot --script res://tests/run_tests.gd
+& $godotConsole --headless --path $projectRoot --log-file $godotLog --script res://tests/run_tests.gd
 if ($LASTEXITCODE -ne 0) {
 	throw "Automated tests failed with exit code $LASTEXITCODE"
 }
 
 New-Item -ItemType Directory -Force -Path $buildRoot | Out-Null
-& $godotConsole --headless --path $projectRoot --script res://tests/test_playtest_flow.gd
+& $godotConsole --headless --path $projectRoot --log-file $godotLog --script res://tests/test_playtest_flow.gd
 if ($LASTEXITCODE -ne 0) {
 	throw "Playtest flow integration failed with exit code $LASTEXITCODE"
+}
+& $godotConsole --headless --path $projectRoot --log-file $godotLog --script res://tests/test_encounter_flow.gd
+if ($LASTEXITCODE -ne 0) {
+	throw "Encounter flow integration failed with exit code $LASTEXITCODE"
 }
 foreach ($oldFile in @($packPath, $runnerPath, $archivePath)) {
 	if (Test-Path -LiteralPath $oldFile) {
@@ -30,7 +35,7 @@ foreach ($oldFile in @($packPath, $runnerPath, $archivePath)) {
 	}
 }
 
-& $godotConsole --headless --path $projectRoot --export-pack 'Windows Desktop' $packPath
+& $godotConsole --headless --path $projectRoot --log-file $godotLog --export-pack 'Windows Desktop' $packPath
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $packPath)) {
 	throw "Godot pack export failed with exit code $LASTEXITCODE"
 }
@@ -46,7 +51,7 @@ foreach ($notice in @('README.md', 'licenses-8px', 'licenses-10px')) {
 	Copy-Item -LiteralPath (Join-Path $fontRoot $notice) -Destination $fontNotices -Recurse -Force
 }
 
-& $godotConsole --headless --main-pack $packPath --quit-after 60
+& $godotConsole --headless --main-pack $packPath --log-file $godotLog --quit-after 60
 if ($LASTEXITCODE -ne 0) {
 	throw "Packaged game smoke test failed with exit code $LASTEXITCODE"
 }

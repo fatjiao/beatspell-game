@@ -78,6 +78,8 @@ class Figure extends Control:
 			3: combat()
 			4: boss_cues()
 			9: languages()
+			10: encounters()
+			11: records()
 			5:
 				header("练习模式怎么用", "实机截图 · 无伤害练习，从三个基础术式开始")
 				shot("res://build/beatspell-practice-preview.png")
@@ -86,11 +88,11 @@ class Figure extends Control:
 				text(Vector2(120, 837), "练习不限时，成功施法后双方生命恢复，不会击杀目标。", 25, MUTED)
 			6:
 				header("结算时看什么", "实机截图 · 先看胜负，再看时机与术式成功率")
-				shot("res://build/beatspell-result-preview.png")
+				shot("res://build/beatspell-record-result-preview.png")
 				text(Vector2(120, 735), "等级：术式成功率、Miss 输入和平均绝对偏差共同决定。", 26)
 				text(Vector2(120, 786), "偏差：越接近 0ms 越准；EARLY / LATE 表示整体早晚倾向。", 26)
-				text(Vector2(120, 837), "战斗账本：查看最高连击、伤害、格挡、精准格挡和破防。", 26)
-				text(Vector2(120, 888), "超时指令和战斗结束前未完成的组合，也会计入失败次数。", 25, MUTED)
+				text(Vector2(120, 837), "新纪录行：评级、最快通关、连击突破时显示；V 查看战绩。", 26)
+				text(Vector2(120, 888), "示例统计。超时指令和局末未完成组合各记一次失败。", 25, MUTED)
 			7: poses()
 			8:
 				header("三种防御训练与训练报告", "实机截图 · 左右键切换节奏，Tab 查看本轮各模式的成绩")
@@ -197,6 +199,31 @@ class Figure extends Control:
 		text(Vector2(48, 887), "防御训练中按左右键选择节奏，切换在下一小节生效。", 26, MUTED)
 
 
+	func encounters() -> void:
+		header("战斗模式 / Encounters", "标题左右选择，ENTER / J / K 开始 · Same beat, different encounters")
+		shot("res://build/beatspell-title-gauntlet-preview.png")
+		text(Vector2(65, 735), "仪式 RITUAL：9 小节教学，随后按生命进入阶段。", 28, TEAL)
+		text(Vector2(65, 789), "决斗 DUEL：无教学，直接按生命阶段，每 4 / 3 / 2 小节攻击。", 27)
+		text(Vector2(65, 843), "试炼 GAUNTLET：每 2 小节攻击，标准 → 切分 → 疾奏轮换。", 27)
+		text(Vector2(65, 895), "All modes: 5 HP / Boss 60 HP / 90 seconds / 120 BPM. R retries the same mode.", 23, MUTED)
+
+
+	func records() -> void:
+		header("本地战绩 / Record book", "标题或结算按 V · V / ESC 返回 · Example statistics / 示例统计")
+		for index in 2:
+			var path := "res://build/beatspell-records%s-preview.png" % ("-zh" if index == 1 else "")
+			if not screenshots.has(path):
+				screenshots[path] = ImageTexture.create_from_image(Image.load_from_file(ProjectSettings.globalize_path(path)))
+			draw_texture_rect(screenshots[path], Rect2(40 + index * 580, 150, 540, 304), false)
+		text(Vector2(65, 525), "各模式分别保存：胜场 / 完整场次、最佳评级、最快通关、最高连击。", 27)
+		text(Vector2(65, 572), "Per mode: wins / completed runs, best rank, fastest victory and best combo.", 24, MUTED)
+		text(Vector2(65, 646), "通关时间只比较获胜局；评级和连击也统计失败局。", 27)
+		text(Vector2(65, 693), "Clear times require a win. Rank and combo also include completed losses.", 24, MUTED)
+		text(Vector2(65, 767), "练习与中途退出不计入；本机保存，重启保留。", 27, TEAL)
+		text(Vector2(65, 814), "Practice and abandoned runs are excluded. Saved locally across restarts.", 24, MUTED)
+		text(Vector2(65, 886), "No cloud save. New records appear on results. / 暂无云存档。", 24, MUTED)
+
+
 	func languages() -> void:
 		header("中英文切换 / Language", "实机截图 · O → 语言 / LANGUAGE · 上下选择，左右切换")
 		for index in 2:
@@ -245,7 +272,7 @@ func _build() -> void:
 	var figure := Figure.new()
 	figure.size = Vector2(1200, 940)
 	viewport.add_child(figure)
-	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report", "languages"]
+	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report", "languages", "encounters", "records"]
 	var selected := OS.get_cmdline_user_args()
 	for index in names.size():
 		if not selected.is_empty() and names[index] not in selected:

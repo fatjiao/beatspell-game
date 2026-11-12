@@ -2,6 +2,7 @@ extends Control
 
 const Art = preload("res://scripts/beatspell/art_direction.gd")
 const Lang = preload("res://scripts/beatspell/localization.gd")
+const Encounters = preload("res://scripts/beatspell/encounter_rules.gd")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_ART = preload("res://assets/art/beatspell/pixel/caster.png")
 const BOSS_ART = preload("res://assets/art/beatspell/pixel/warden.png")
@@ -15,6 +16,9 @@ var result_data: Dictionary = {}
 var options_data: Dictionary = {}
 var selected_option := 0
 var drill_data: Dictionary = {}
+var selected_encounter := "ritual"
+var title_save_failed := false
+var records_data: Dictionary = {}
 
 var _phase_started_ticks := 0
 var _phase_until_ticks := 0
@@ -40,6 +44,13 @@ func show_options(data: Dictionary, selected: int) -> void:
 	mode = "options"
 	options_data = data.duplicate(true)
 	selected_option = selected
+	_request_redraw()
+
+
+func show_records(data: Dictionary, selected: String) -> void:
+	mode = "records"
+	records_data = data.duplicate(true)
+	selected_encounter = selected
 	_request_redraw()
 
 
@@ -120,6 +131,8 @@ func _draw() -> void:
 			_draw_result()
 		"drill_report":
 			_draw_drill_report()
+		"records":
+			_draw_records()
 	if _phase_until_ticks > Time.get_ticks_msec() and mode.is_empty():
 		_draw_phase_flash()
 
@@ -134,13 +147,15 @@ func _draw_title() -> void:
 	draw_line(Vector2(112, 73), Vector2(149, 73), Color(Art.GOLD, 0.7), 0.5)
 	draw_circle(Vector2(160, 73), 1.5, Art.GOLD)
 	draw_line(Vector2(171, 73), Vector2(208, 73), Color(Art.GOLD, 0.7), 0.5)
-	Art.pixel_text(self, Vector2(102, 85), "LISTEN. WEAVE. SURVIVE.", HORIZONTAL_ALIGNMENT_CENTER, 116, 5, Art.MUTED)
+	Art.pixel_text(self, Vector2(80, 85), Lang.text("< %s >", [Encounters.label(selected_encounter)]), HORIZONTAL_ALIGNMENT_CENTER, 160, 7, Art.GOLD)
+	var description: String = {"ritual": "GUIDED / 90S", "duel": "NO LESSONS / 90S", "gauntlet": "ROTATING CUES / 90S"}.get(selected_encounter, "GUIDED / 90S")
+	Art.pixel_text(self, Vector2(80, 98), "SETTINGS SAVE FAILED" if title_save_failed else description, HORIZONTAL_ALIGNMENT_CENTER, 160, 5, Art.MUTED)
 	for index in 3:
 		var skill: String = ["fireball", "shield", "heal"][index]
-		Art.sigil(self, Vector2(133 + index * 27, 103), skill, 7, Art.GOLD)
+		Art.sigil(self, Vector2(133 + index * 27, 111), skill, 5, Art.GOLD)
 	Art.panel(self, Rect2(114, 123, 92, 23), Art.GOLD, true)
-	Art.pixel_text(self, Vector2(122, 138), "BEGIN RITUAL", HORIZONTAL_ALIGNMENT_CENTER, 76, 7, Art.IVORY)
-	Art.pixel_text(self, Vector2(117, 155), "J / K   ·   ENTER", HORIZONTAL_ALIGNMENT_CENTER, 86, 4, Art.GOLD)
+	Art.pixel_text(self, Vector2(122, 138), "BEGIN BATTLE", HORIZONTAL_ALIGNMENT_CENTER, 76, 7, Art.IVORY)
+	Art.pixel_text(self, Vector2(60, 155), "ARROWS MODE / ENTER START / V RECORDS", HORIZONTAL_ALIGNMENT_CENTER, 200, 4, Art.GOLD)
 	Art.pixel_text(self, Vector2(60, 167), "T PRACTICE / O OPTIONS / C CALIBRATE", HORIZONTAL_ALIGNMENT_CENTER, 200, 5, Art.MUTED)
 	Art.pixel_text(self, Vector2(100, 177), "H SPELLBOOK / ESC LEAVE", HORIZONTAL_ALIGNMENT_CENTER, 120, 4, Art.MUTED)
 
@@ -175,7 +190,45 @@ func _draw_result() -> void:
 	Art.pixel_text(self, Vector2(48, 98), Lang.text("MAX COMBO %02d / DAMAGE %02d", [int(result_data.get("max_combo", 0)), int(result_data.get("damage", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.GOLD)
 	Art.pixel_text(self, Vector2(48, 112), Lang.text("BLOCK %02d / PERFECT %02d / BREAK %02d", [int(result_data.get("blocks", 0)), int(result_data.get("perfect_guards", 0)), int(result_data.get("breaks", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.TEAL)
 	Art.pixel_text(self, Vector2(48, 126), Lang.text("HEAL %02d / TIME %02dS / BOSS %02d", [int(result_data.get("healing", 0)), int(result_data.get("duration_seconds", 0)), int(result_data.get("boss_hp", 0))]), HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.MUTED)
-	Art.pixel_text(self, Vector2(48, 148), "R AGAIN / H SPELLBOOK / ESC TITLE", HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.IVORY)
+	var flags: Dictionary = result_data.get("record_flags", {})
+	var badges: Array[String] = []
+	for field in ["new_rank", "new_clear", "new_combo"]:
+		if flags.get(field, false):
+			badges.append(Lang.text({"new_rank": "RANK", "new_clear": "TIME", "new_combo": "COMBO"}[field]))
+	var record_text := Lang.text("NEW / %s", [" / ".join(badges)]) if not badges.is_empty() else Lang.text(String(result_data.get("encounter", "RITUAL")))
+	if result_data.get("record_save_failed", false):
+		record_text = Lang.text("RECORD SAVE FAILED")
+	Art.pixel_text(self, Vector2(48, 137), record_text, HORIZONTAL_ALIGNMENT_CENTER, 224, 5, Art.GOLD)
+	Art.pixel_text(self, Vector2(48, 148), "R AGAIN / V RECORDS / ESC TITLE", HORIZONTAL_ALIGNMENT_CENTER, 224, 6, Art.IVORY)
+
+
+func _draw_records() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.025, 0.03, 0.96))
+	Art.panel(self, Rect2(24, 18, 272, 144), Art.GOLD, true)
+	Art.pixel_text(self, Vector2(42, 39), "RECORD BOOK", HORIZONTAL_ALIGNMENT_CENTER, 236, 12, Art.IVORY)
+	var columns := [42, 132, 191, 235]
+	for index in 4:
+		Art.pixel_text(self, Vector2(columns[index], 55), ["MODE", "WIN/RUN", "RANK", "BEST"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Art.MUTED)
+	var modes := ["ritual", "duel", "gauntlet"]
+	for index in modes.size():
+		var id: String = modes[index]
+		var row: Dictionary = records_data.get("modes", {}).get(id, {})
+		var y := 73 + index * 17
+		if id == selected_encounter:
+			draw_rect(Rect2(35, y - 9, 250, 14), Color(Art.TEAL, 0.12))
+		Art.pixel_text(self, Vector2(columns[0], y), Encounters.label(id), HORIZONTAL_ALIGNMENT_LEFT, 84, 6, Art.IVORY)
+		Art.pixel_text(self, Vector2(columns[1], y), "%s/%s" % [_compact_count(int(row.get("wins", 0))), _compact_count(int(row.get("attempts", 0)))], HORIZONTAL_ALIGNMENT_LEFT, 55, 6, Art.TEAL)
+		var rank_text: String = row.get("best_rank", "")
+		Art.pixel_text(self, Vector2(columns[2], y), "-" if rank_text.is_empty() else rank_text, HORIZONTAL_ALIGNMENT_LEFT, 32, 6, Art.GOLD)
+		var time_ms := int(row.get("best_clear_ms", -1))
+		Art.pixel_text(self, Vector2(columns[3], y), "-" if time_ms < 0 else "%.1fS" % (time_ms / 1000.0), HORIZONTAL_ALIGNMENT_LEFT, 44, 6, Art.TEAL)
+	var selected: Dictionary = records_data.get("modes", {}).get(selected_encounter, {})
+	Art.pixel_text(self, Vector2(40, 128), Lang.text("BEST COMBO %s", [_compact_count(int(selected.get("best_combo", 0)))]), HORIZONTAL_ALIGNMENT_CENTER, 240, 6, Art.GOLD)
+	Art.pixel_text(self, Vector2(40, 150), "V / ESC BACK", HORIZONTAL_ALIGNMENT_CENTER, 240, 6, Art.MUTED)
+
+
+func _compact_count(value: int) -> String:
+	return "999+" if value > 999 else str(value)
 
 
 func _draw_phase_flash() -> void:
