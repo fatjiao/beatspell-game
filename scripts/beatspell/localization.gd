@@ -3,6 +3,14 @@ extends RefCounted
 ## UI strings are translated at draw time; gameplay records retain stable identifiers.
 const LANGUAGES := ["auto", "zh_CN", "en"]
 const ZH := {
+	"PRISM": "棱镜", "PRISM WARDEN": "棱镜守卫",
+	"SECOND BOSS / 72HP": "第二位首领 / 72生命",
+	"ECHO": "回声", "OFFBEAT": "反拍",
+	"ARMOR -1": "护甲 -1", "OPEN +1": "核心开放 +1",
+	"GET READY": "准备继续", "P / ESC KEEP PAUSED": "P / ESC 保持暂停",
+	"RESUME WITH THREE COUNTS": "继续前有三拍准备",
+	"MEDAL": "勋章", "UNCLEARED": "未通关", "CLEAR MEDAL": "通关勋章",
+	"A CLEAR": "A 级通关", "S CLEAR": "S 级通关", "%s / COMBO %s": "%s / 连击 %s",
 	"RITUAL": "仪式", "DUEL": "决斗", "GAUNTLET": "试炼",
 	"< %s >": "< %s >", "GUIDED / 90S": "含教学 / 90秒",
 	"%s / %s": "%s / %s",

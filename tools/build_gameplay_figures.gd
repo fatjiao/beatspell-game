@@ -80,6 +80,8 @@ class Figure extends Control:
 			9: languages()
 			10: encounters()
 			11: records()
+			12: prism()
+			13: session_safety()
 			5:
 				header("练习模式怎么用", "实机截图 · 无伤害练习，从三个基础术式开始")
 				shot("res://build/beatspell-practice-preview.png")
@@ -95,11 +97,11 @@ class Figure extends Control:
 				text(Vector2(120, 888), "示例统计。超时指令和局末未完成组合各记一次失败。", 25, MUTED)
 			7: poses()
 			8:
-				header("三种防御训练与训练报告", "实机截图 · 左右键切换节奏，Tab 查看本轮各模式的成绩")
+				header("五种防御训练与训练报告", "实机截图 · 左右键切换节奏，Tab 查看本轮各模式的成绩")
 				shot("res://build/beatspell-drill-report-preview.png")
 				text(Vector2(120, 735), "TRY 尝试 / BLK 格挡 / PRF 精准格挡 / RUN 最佳连续精准格挡。", 25)
 				text(Vector2(120, 786), "每种节奏连续精准格挡 3 次标为 OK；切换模式保留本轮成绩。", 25)
-				text(Vector2(120, 837), "报告暂停战斗，Tab 或 Esc 返回暂停页，P 继续；R 重开清空。", 25)
+				text(Vector2(120, 837), "P 开始三拍恢复准备；R 重开清空。新增 ECHO 回声 / OFFBEAT 反拍。", 25)
 
 
 	func overview() -> void:
@@ -174,7 +176,7 @@ class Figure extends Control:
 		box(Rect2(460, 380, 300, 125), "共鸣就绪", "下一发火球 +1", GOLD)
 		arrow(Vector2(610, 520), Vector2(610, 640), GOLD)
 		arrow(Vector2(1007, 520), Vector2(900, 640), GOLD)
-		box(Rect2(180, 660, 840, 140), "Perfect 火球 2 + 弱点 2 + 共鸣 1", "合计最多 5 点伤害，消耗已有的两种增伤", GOLD)
+		box(Rect2(180, 660, 840, 140), "Perfect 火球 2 + 弱点 2 + 共鸣 1", "不计棱镜姿态为 5；棱镜护甲再 -1，开放再 +1", GOLD)
 		center_text(Vector2(600, 882), "术式失败、超时或受击：连击归零，未使用共鸣清除。", 27, RED)
 
 
@@ -201,11 +203,12 @@ class Figure extends Control:
 
 	func encounters() -> void:
 		header("战斗模式 / Encounters", "标题左右选择，ENTER / J / K 开始 · Same beat, different encounters")
-		shot("res://build/beatspell-title-gauntlet-preview.png")
-		text(Vector2(65, 735), "仪式 RITUAL：9 小节教学，随后按生命进入阶段。", 28, TEAL)
-		text(Vector2(65, 789), "决斗 DUEL：无教学，直接按生命阶段，每 4 / 3 / 2 小节攻击。", 27)
-		text(Vector2(65, 843), "试炼 GAUNTLET：每 2 小节攻击，标准 → 切分 → 疾奏轮换。", 27)
-		text(Vector2(65, 895), "All modes: 5 HP / Boss 60 HP / 90 seconds / 120 BPM. R retries the same mode.", 23, MUTED)
+		shot("res://build/beatspell-title-prism-preview.png")
+		text(Vector2(65, 720), "仪式 RITUAL：9 小节教学。决斗 DUEL：直接按生命阶段战斗。", 27, TEAL)
+		text(Vector2(65, 767), "试炼 GAUNTLET：每 2 小节攻击，标准 → 切分 → 疾奏轮换。", 27)
+		text(Vector2(65, 814), "棱镜 PRISM：第二位 Boss，护甲 / 核心开放与两种新预警。", 27)
+		text(Vector2(65, 862), "First 3: Boss 60 HP. Prism: 72 HP. All: 5 player HP / 90s / 120 BPM.", 24, MUTED)
+		text(Vector2(65, 903), "左右选模式 / ARROWS select · R 重开当前模式 / retry same encounter", 23, MUTED)
 
 
 	func records() -> void:
@@ -219,9 +222,50 @@ class Figure extends Control:
 		text(Vector2(65, 572), "Per mode: wins / completed runs, best rank, fastest victory and best combo.", 24, MUTED)
 		text(Vector2(65, 646), "通关时间只比较获胜局；评级和连击也统计失败局。", 27)
 		text(Vector2(65, 693), "Clear times require a win. Rank and combo also include completed losses.", 24, MUTED)
-		text(Vector2(65, 767), "练习与中途退出不计入；本机保存，重启保留。", 27, TEAL)
-		text(Vector2(65, 814), "Practice and abandoned runs are excluded. Saved locally across restarts.", 24, MUTED)
-		text(Vector2(65, 886), "No cloud save. New records appear on results. / 暂无云存档。", 24, MUTED)
+		text(Vector2(65, 767), "三个勋章格：通关 → A 级通关 → S 级通关，只看胜局。", 27, TEAL)
+		text(Vector2(65, 814), "Medals: clear / A victory / S victory. Loss ranks do not earn medals.", 24, MUTED)
+		text(Vector2(65, 886), "本地保存，练习与中退不计 / Local save; practice and abandoned runs excluded.", 23, MUTED)
+
+
+	func prism() -> void:
+		header("棱镜守卫 / Prism Warden", "第二位 Boss · 72 HP · 两小节一击 / one strike every 2 bars")
+		for index in 2:
+			var path := "res://build/beatspell-prism-%s-preview.png" % ["armor", "open"][index]
+			if not screenshots.has(path):
+				screenshots[path] = ImageTexture.create_from_image(Image.load_from_file(ProjectSettings.globalize_path(path)))
+			draw_texture_rect(screenshots[path], Rect2(40 + index * 580, 135, 540, 304), false)
+		center_text(Vector2(310, 485), "护甲 ARMORED：FLARE -1", 27)
+		center_text(Vector2(890, 485), "核心开放 OPEN：FLARE +1", 27, TEAL)
+		text(Vector2(60, 540), "每四小节循环：护甲 → 护甲 → 开放 → 开放；完成施法时计算。", 26)
+		text(Vector2(60, 581), "4-bar cycle: armor / armor / open / open. Damage uses the finishing bar.", 24, MUTED)
+		for row in 2:
+			var y := 670 + row * 100
+			text(Vector2(60, y + 9), ["回声 ECHO", "反拍 OFFBEAT"][row], 26)
+			draw_line(Vector2(315, y), Vector2(1100, y), MUTED, 2)
+			var times: Array = [[0, 250, 1000, 1250], [250, 750, 1250, 1750]][row]
+			for tick in times:
+				var x := 315.0 + float(tick) / 2000.0 * 785
+				draw_circle(Vector2(x, y), 8, TEAL)
+				center_text(Vector2(x, y + 37), str(tick), 22, MUTED)
+			draw_line(Vector2(1100, y - 25), Vector2(1100, y + 25), RED, 3)
+			center_text(Vector2(1100, y + 37), "2000ms", 22, RED)
+		text(Vector2(60, 878), "命中仍在小节末；增减伤在破防/共鸣之后计算，最低 1。", 25)
+		text(Vector2(60, 915), "Impact at bar end. Modifier stacks with fracture/resonance; minimum damage 1.", 23, MUTED)
+
+
+	func session_safety() -> void:
+		header("中断与恢复 / Pause and resume", "实机截图 · 切出窗口自动暂停 / Losing focus pauses the battle")
+		for index in 2:
+			var path := "res://build/beatspell-resume%s-preview.png" % ("-zh" if index == 1 else "")
+			if not screenshots.has(path):
+				screenshots[path] = ImageTexture.create_from_image(Image.load_from_file(ProjectSettings.globalize_path(path)))
+			draw_texture_rect(screenshots[path], Rect2(40 + index * 580, 150, 540, 304), false)
+		text(Vector2(65, 536), "P：三拍准备（1500ms）后恢复；P / Esc 可取消，保持暂停。", 27)
+		text(Vector2(65, 585), "P: 3-count preparation, then resume. P / Esc cancels and stays paused.", 24, MUTED)
+		text(Vector2(65, 664), "准备期间音乐、指令和战斗时间冻结，恢复时接着原相位。", 27, TEAL)
+		text(Vector2(65, 713), "Music, commands and battle time freeze; resume at the same beat phase.", 24, MUTED)
+		text(Vector2(65, 792), "重新切回窗口不会自动继续；O / H 开菜单，R 重开。", 27)
+		text(Vector2(65, 841), "Returning focus never resumes automatically. O / H menus, R restart.", 24, MUTED)
 
 
 	func languages() -> void:
@@ -272,7 +316,7 @@ func _build() -> void:
 	var figure := Figure.new()
 	figure.size = Vector2(1200, 940)
 	viewport.add_child(figure)
-	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report", "languages", "encounters", "records"]
+	var names := ["battle-overview", "timing-ring", "spell-patterns", "guard-and-bonuses", "boss-cues", "practice", "results", "character-poses", "defense-report", "languages", "encounters", "records", "prism-boss", "session-safety"]
 	var selected := OS.get_cmdline_user_args()
 	for index in names.size():
 		if not selected.is_empty() and names[index] not in selected:

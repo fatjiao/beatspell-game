@@ -3,6 +3,7 @@ extends RefCounted
 const Bank = preload("res://scripts/beatspell/sound_bank.gd")
 
 const VOLUME_DB := {
+	"prism_warning": -10.0, "prism_strike": -5.0, "prism_shift": -14.0,
 	"break": -5.0,
 	"victory": -9.0,
 	"defeat": -10.0,

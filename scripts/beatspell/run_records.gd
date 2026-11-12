@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Local completed-run records. Practice and abandoned runs are excluded by the caller.
 const RECORDS_PATH := "user://run-records.json"
-const MODES := ["ritual", "duel", "gauntlet"]
+const MODES := ["ritual", "duel", "gauntlet", "prism"]
 const RANKS := ["", "C", "B", "A", "S"]
 const COUNTER_LIMIT := 999999
 const DURATION_LIMIT_MS := 90000
@@ -48,13 +48,14 @@ static func save_records(data: Dictionary, path: String = RECORDS_PATH) -> Error
 
 
 static func record_run(data: Dictionary, mode: String, result: Dictionary) -> Dictionary:
-	var changes := {"new_rank": false, "new_clear": false, "new_combo": false}
+	var changes := {"new_rank": false, "new_clear": false, "new_combo": false, "new_mastery": false}
 	if mode not in MODES:
 		return changes
 	var normalized := _normalize(data)
 	data.clear()
 	data.merge(normalized, true)
 	var record: Dictionary = data.modes[mode]
+	var previous_mastery := mastery(record)
 	var rank := _rank(result.get("rank", "C"))
 	if rank.is_empty():
 		rank = "C"
@@ -64,6 +65,8 @@ static func record_run(data: Dictionary, mode: String, result: Dictionary) -> Di
 	record.attempts = mini(record.attempts + 1, COUNTER_LIMIT)
 	if victory:
 		record.wins = mini(record.wins + 1, record.attempts)
+		if RANKS.find(rank) > RANKS.find(record.best_victory_rank):
+			record.best_victory_rank = rank
 		if record.best_clear_ms < 0 or duration < record.best_clear_ms:
 			record.best_clear_ms = duration
 			changes.new_clear = true
@@ -75,12 +78,24 @@ static func record_run(data: Dictionary, mode: String, result: Dictionary) -> Di
 		changes.new_combo = true
 	record.last_rank = rank
 	record.last_victory = victory
+	changes.new_mastery = mastery(record) > previous_mastery
 	return changes
+
+
+## Mastery requires a victory; a high rhythm grade in a lost run cannot earn it.
+## Older version-1 saves retain the clear tier without inventing a winning grade.
+static func mastery(record: Dictionary) -> int:
+	if _integer(record.get("wins", 0), 0, 0, COUNTER_LIMIT) <= 0:
+		return 0
+	match _rank(record.get("best_victory_rank", "")):
+		"S": return 3
+		"A": return 2
+	return 1
 
 
 static func _empty_mode() -> Dictionary:
 	return {"attempts": 0, "wins": 0, "best_rank": "", "best_clear_ms": -1,
-		"best_combo": 0, "last_rank": "", "last_victory": false}
+		"best_combo": 0, "last_rank": "", "last_victory": false, "best_victory_rank": ""}
 
 
 static func _normalize(value: Variant) -> Dictionary:
@@ -108,6 +123,9 @@ static func _normalize(value: Variant) -> Dictionary:
 		target.last_victory = source.get("last_victory", false) is bool and source.get("last_victory", false) and target.wins > 0
 		if target.wins > 0:
 			target.best_clear_ms = _integer(source.get("best_clear_ms", -1), -1, -1, DURATION_LIMIT_MS)
+			target.best_victory_rank = _rank(source.get("best_victory_rank", ""))
+			if RANKS.find(target.best_victory_rank) > RANKS.find(target.best_rank):
+				target.best_rank = target.best_victory_rank
 	return normalized
 
 

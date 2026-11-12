@@ -6,6 +6,7 @@ const SOUNDS := {
 	"shield_block": 0.24, "parry": 0.28, "heal": 0.48, "boss": 0.42,
 	"warning": 0.10, "error": 0.16, "count": 0.045, "break": 0.45,
 	"victory": 0.90, "defeat": 0.70,
+	"prism_warning": 0.12, "prism_strike": 0.46, "prism_shift": 0.32,
 }
 
 
@@ -28,6 +29,17 @@ static func generate(kind: String) -> AudioStreamWAV:
 		var frequency := 440.0
 		var sample := 0.0
 		match kind:
+			"prism_warning":
+				sample = sin(TAU * 784.0 * t) * exp(-t * 20) * 0.60
+				sample += sin(TAU * 2156.0 * t) * exp(-t * 36) * 0.20
+			"prism_strike":
+				phase += TAU * lerpf(220.0, 48.0, p) / RATE
+				sample = sin(phase) * 0.46 + filtered_noise * exp(-t * 10) * 0.35
+				sample += sin(TAU * 1174.0 * t) * exp(-t * 17) * 0.20
+			"prism_shift":
+				sample = sin(TAU * 587.33 * t) * exp(-t * 12) * 0.35
+				sample += sin(TAU * 880.0 * t) * exp(-t * 9) * 0.30
+				sample += sin(TAU * 1568.0 * t) * exp(-t * 18) * 0.15
 			"charge":
 				frequency = lerpf(200.0, 95.0, p)
 				phase += TAU * frequency / RATE

@@ -6,7 +6,7 @@ $godotConsole = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_c
 $buildRoot = Join-Path $projectRoot 'build\BeatspellPlaytest'
 $packPath = Join-Path $buildRoot 'BeatspellPlaytest.pck'
 $runnerPath = Join-Path $buildRoot 'BeatspellPlaytest.exe'
-$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.6.0.zip'
+$archivePath = Join-Path $projectRoot 'build\BeatspellPlaytest-v0.7.0.zip'
 $godotLog = Join-Path $projectRoot 'build\godot-playtest-build.log'
 
 foreach ($required in @($godotGui, $godotConsole)) {
@@ -28,6 +28,10 @@ if ($LASTEXITCODE -ne 0) {
 & $godotConsole --headless --path $projectRoot --log-file $godotLog --script res://tests/test_encounter_flow.gd
 if ($LASTEXITCODE -ne 0) {
 	throw "Encounter flow integration failed with exit code $LASTEXITCODE"
+}
+& $godotConsole --headless --path $projectRoot --log-file $godotLog --script res://tests/test_prism_flow.gd
+if ($LASTEXITCODE -ne 0) {
+	throw "Prism flow integration failed with exit code $LASTEXITCODE"
 }
 foreach ($oldFile in @($packPath, $runnerPath, $archivePath)) {
 	if (Test-Path -LiteralPath $oldFile) {

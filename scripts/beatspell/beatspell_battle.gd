@@ -17,6 +17,8 @@ const Art = preload("res://scripts/beatspell/art_direction.gd")
 const Lang = preload("res://scripts/beatspell/localization.gd")
 const Encounters = preload("res://scripts/beatspell/encounter_rules.gd")
 const Records = preload("res://scripts/beatspell/run_records.gd")
+const ResumeCountdown = preload("res://scripts/beatspell/resume_countdown.gd")
+const PRISM_ART = preload("res://assets/art/beatspell/pixel/prism_warden.png")
 const ARENA_ART = preload("res://assets/art/beatspell/pixel/observatory.png")
 const CASTER_FRAMES := {
 	"idle": preload("res://assets/art/beatspell/pixel/poses/caster_idle.png"),
@@ -114,6 +116,9 @@ var _finished := false
 var _result_text := ""
 var _paused := false
 var _pause_started_ticks := 0
+var _resume = ResumeCountdown.new()
+var _resume_started_ticks := 0
+var _resume_click_index := -1
 var _count_click_index := -1
 var _error_text := ""
 var _stage_shake_until := 0
@@ -138,6 +143,7 @@ func _process(_delta: float) -> void:
 		queue_redraw()
 		return
 	if _paused:
+		_update_resume(Time.get_ticks_msec())
 		queue_redraw()
 		return
 	if not _music_started:
@@ -161,6 +167,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_button_press: bool = event is InputEventJoypadButton and event.pressed
 	if not is_key_press and not is_button_press:
 		return
+	if _resume.active:
+		if is_key_press and event.physical_keycode in [KEY_P, KEY_ESCAPE]:
+			_cancel_resume()
+		elif is_key_press and event.physical_keycode in [KEY_O, KEY_H, KEY_R]:
+			_cancel_resume()
+		else:
+			get_viewport().set_input_as_handled()
+			return
+		if event.physical_keycode in [KEY_P, KEY_ESCAPE]:
+			get_viewport().set_input_as_handled()
+			return
 	if _records_open:
 		if is_key_press and event.physical_keycode in [KEY_V, KEY_ESCAPE]:
 			_records_open = false
@@ -206,7 +223,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _waiting_to_start and is_key_press and event.physical_keycode in [KEY_LEFT, KEY_RIGHT]:
-		var modes := ["ritual", "duel", "gauntlet"]
+		var modes := Encounters.MODES
 		var direction := -1 if event.physical_keycode == KEY_LEFT else 1
 		_encounter = modes[posmod(modes.find(_encounter) + direction, modes.size())]
 		_options.encounter = _encounter
@@ -272,6 +289,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _show_title() -> void:
+	_resume.cancel()
 	_records_open = false
 	_drill_report_open = false
 	_guide_open = false
@@ -302,6 +320,9 @@ func _show_title() -> void:
 
 
 func _start_run(practice: bool = false) -> void:
+	_resume.cancel()
+	for player in _sfx_players.values():
+		player.stop()
 	_records_open = false
 	_record_flags.clear()
 	_record_save_failed = false
@@ -315,7 +336,7 @@ func _start_run(practice: bool = false) -> void:
 	_tutorial_casts = {"fireball": 0, "heal": 0, "shield": 0}
 	_clear_visual_effects()
 	_waiting_to_start = false
-	_battle = BattleModelScript.new()
+	_battle = BattleModelScript.new(60 if practice else Encounters.boss_health(_encounter))
 	_song_start_ticks = Time.get_ticks_msec() + 2000
 	_song_time_ms = -2000
 	_music_loop_offset_ms = 0
@@ -375,7 +396,9 @@ func _update_bar() -> void:
 			if _practice_defense:
 				_show_feedback("%s DRILL", Art.GOLD, 700, [DefenseDrill.LABELS[_drill.selected]])
 		return
-	var next_phase := Encounters.phase(_encounter, _bar_index, _battle.boss_hp, _battle.MAX_BOSS_HP)
+	if _encounter == "prism" and _bar_index % 2 == 0:
+		_play_sfx("prism_shift")
+	var next_phase := Encounters.phase(_encounter, _bar_index, _battle.boss_hp, _battle.max_boss_hp)
 	if next_phase != _active_phase:
 		_active_phase = next_phase
 		var phase_color := Color("ff9a6b") if _active_phase == 2 else Color("ff4f70")
@@ -434,12 +457,13 @@ func _resolve_bar(resolved_bar: int) -> void:
 func _cast_skill(skill: String, grade: String) -> void:
 	_last_action = "cast"
 	_action_flash_until = Time.get_ticks_msec() + 150
-	var result: Dictionary = _battle.cast_spell(skill, grade, _adjusted_song_time())
+	var modifier := 0 if _practice_mode else Encounters.flare_modifier(_encounter, _bar_index)
+	var result: Dictionary = _battle.cast_spell(skill, grade, _adjusted_song_time(), modifier)
 	_tutorial_casts[skill] += 1
 	if _practice_mode:
 		_practice.record_cast(skill)
 		_battle.player_hp = _battle.MAX_PLAYER_HP
-		_battle.boss_hp = _battle.MAX_BOSS_HP
+		_battle.boss_hp = _battle.max_boss_hp
 	_last_skill = skill
 	_empowered_flare = skill == "fireball" and int(result.bonus) > 0
 	_skill_flash_until = Time.get_ticks_msec() + 620
@@ -477,7 +501,7 @@ func _resolve_boss_attack(impact_time_ms: int = -1) -> void:
 	else:
 		_trigger_stage_shake(4.5, 280)
 		_show_feedback("BEAST STRIKE  -%d", Color("ff668e"), 820, [result.damage])
-		_play_sfx("boss")
+		_play_sfx("prism_strike" if _is_prism() else "boss")
 	if _practice_mode and _practice_defense:
 		if drill_clear:
 			_show_feedback("%s CLEAR", Art.GOLD, 1200, [DefenseDrill.LABELS[_drill.selected]])
@@ -523,7 +547,7 @@ func _update_attack_cue(adjusted_time_ms: int) -> void:
 	var cue: Dictionary = _attack_cue_audio.next_cue(_bar_index, cue_index)
 	if not cue.should_play:
 		return
-	var player: AudioStreamPlayer = _sfx_players.get("warning")
+	var player: AudioStreamPlayer = _sfx_players.get("prism_warning" if _practice_pattern() in ["echo", "offbeat"] else "warning")
 	if player != null:
 		player.pitch_scale = cue.pitch_scale
 		player.play()
@@ -571,7 +595,7 @@ func _result_overlay_data() -> Dictionary:
 		"average_offset_ms": _performance.average_absolute_offset_ms(),
 		"timing_bias": _performance.timing_bias(),
 		"boss_hp": _battle.boss_hp,
-		"boss_max_hp": _battle.MAX_BOSS_HP,
+		"boss_max_hp": _battle.max_boss_hp,
 		"max_combo": _battle.max_combo,
 		"damage": _battle.total_damage,
 		"healing": _battle.total_healing,
@@ -586,25 +610,76 @@ func _result_overlay_data() -> Dictionary:
 
 
 func _toggle_pause() -> void:
-	if _finished:
+	if _finished or _waiting_to_start:
 		return
-	_paused = not _paused
 	if _paused:
-		_pause_started_ticks = Time.get_ticks_msec()
-		_overlay.show_pause()
-	else:
-		var paused_duration := Time.get_ticks_msec() - _pause_started_ticks
-		for field in ["_action_flash_until", "_skill_flash_until", "_boss_hit_until", "_boss_attack_until", "_shield_flash_until", "_feedback_until", "_stage_shake_until", "_break_flash_until"]:
-			if int(get(field)) > _pause_started_ticks:
-				set(field, int(get(field)) + paused_duration)
-	if not _paused and not _music_started:
-		_song_start_ticks += Time.get_ticks_msec() - _pause_started_ticks
+		_resume_started_ticks = Time.get_ticks_msec()
+		_resume.begin(_resume_started_ticks)
+		_resume_click_index = -1
+		_overlay.show_resume(3)
+		return
+	_paused = true
+	_pause_started_ticks = Time.get_ticks_msec()
+	_overlay.show_pause()
+	for player in _music_players.values():
+		player.stream_paused = true
+	for player in _sfx_players.values():
+		player.stop()
+	queue_redraw()
+
+
+func _update_resume(now: int) -> void:
+	if not _resume.active:
+		return
+	if _resume.consume(now):
+		_complete_resume(now)
+		return
+	_overlay.show_resume(_resume.remaining(now))
+	# Clicks preserve the frozen music phase, rather than announcing a false downbeat.
+	var phase := posmod(_adjusted_song_time(), BEAT_MS)
+	var first_click := posmod(BEAT_MS - phase, BEAT_MS)
+	var elapsed := now - _resume_started_ticks
+	var index := int(floor(float(elapsed - first_click) / BEAT_MS))
+	if index >= 0 and index != _resume_click_index:
+		_resume_click_index = index
+		_play_sfx("count")
+
+
+func _complete_resume(now: int) -> void:
+	var paused_duration := now - _pause_started_ticks
+	for field in ["_action_flash_until", "_skill_flash_until", "_boss_hit_until", "_boss_attack_until", "_shield_flash_until", "_feedback_until", "_stage_shake_until", "_break_flash_until"]:
+		if int(get(field)) > _pause_started_ticks:
+			set(field, int(get(field)) + paused_duration)
+	_paused = false
+	if not _music_started:
+		_song_start_ticks += paused_duration
 		_overlay.show_count_in(clampi(int(ceil(float(-_song_time_ms) / BEAT_MS)), 1, 4))
-	elif not _paused:
+	else:
 		_overlay.hide_primary()
 	for player in _music_players.values():
-		player.stream_paused = _paused
+		player.stream_paused = false
 	queue_redraw()
+
+
+func _cancel_resume() -> void:
+	_resume.cancel()
+	if _sfx_players.has("count"):
+		_sfx_players.count.stop()
+	_overlay.show_pause()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_node_ready():
+		_handle_focus_lost()
+
+
+func _handle_focus_lost() -> void:
+	if _waiting_to_start or _finished:
+		return
+	if _resume.active:
+		_cancel_resume()
+	elif not _paused:
+		_toggle_pause()
 
 
 func _setup_music() -> bool:
@@ -625,7 +700,7 @@ func _setup_music() -> bool:
 
 
 func _setup_sfx() -> void:
-	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "parry", "heal", "boss", "warning", "error", "count", "break", "victory", "defeat"]:
+	for sound_name in ["charge", "cast", "fireball", "shield", "shield_block", "parry", "heal", "boss", "warning", "error", "count", "break", "victory", "defeat", "prism_warning", "prism_strike", "prism_shift"]:
 		var player := AudioStreamPlayer.new()
 		player.stream = load("res://assets/sfx/beatspell/%s.wav" % sound_name)
 		player.volume_db = _sfx_profile.volume_db(sound_name)
@@ -685,10 +760,10 @@ func _draw_arena() -> void:
 
 func _draw_health() -> void:
 	Art.pixel_text(self, Vector2(16, 10), "THE CASTER", HORIZONTAL_ALIGNMENT_LEFT, 90, 5, Art.IVORY)
-	Art.pixel_text(self, Vector2(214, 10), "RESONANT WARDEN", HORIZONTAL_ALIGNMENT_RIGHT, 90, 5, Art.IVORY)
+	Art.pixel_text(self, Vector2(214, 10), "PRISM WARDEN" if _is_prism() else "RESONANT WARDEN", HORIZONTAL_ALIGNMENT_RIGHT, 90, 5, Art.IVORY)
 	for side in 2:
 		var x := 16.0 if side == 0 else 214.0
-		var fraction := float(_battle.player_hp) / float(_battle.MAX_PLAYER_HP) if side == 0 else float(_battle.boss_hp) / float(_battle.MAX_BOSS_HP)
+		var fraction := float(_battle.player_hp) / float(_battle.MAX_PLAYER_HP) if side == 0 else float(_battle.boss_hp) / float(_battle.max_boss_hp)
 		var color := Art.TEAL if side == 0 else Art.EMBER
 		draw_rect(Rect2(x, 14, 90, 3), Color("263739"))
 		draw_rect(Rect2(x, 14, 90.0 * fraction, 3), color)
@@ -709,6 +784,13 @@ func _draw_health() -> void:
 	for pip in 3:
 		draw_rect(Rect2(214 + pip * 5, 21, 3, 2), Art.GOLD if _battle.exposed or pip < _battle.fracture else Color("263739"))
 	Art.pixel_text(self, Vector2(237, 23), "EXPOSED" if _battle.exposed else "FRACTURE", HORIZONTAL_ALIGNMENT_RIGHT, 67, 4, Art.GOLD if _battle.exposed else Art.MUTED)
+	if _is_prism():
+		var armored := Encounters.stance(_encounter, _bar_index) == "armored"
+		var stance_color := Color("c598ff") if armored else Art.TEAL
+		draw_rect(Rect2(123, 28, 74, 14), Color(Art.INK, 0.94))
+		Art.pixel_text(self, Vector2(123, 36), "ARMOR -1" if armored else "OPEN +1", HORIZONTAL_ALIGNMENT_CENTER, 74, 5, stance_color)
+		for segment in 4:
+			draw_rect(Rect2(147 + segment * 7, 39, 5, 2), stance_color if segment == posmod(_bar_index, 4) else Color("35414d"))
 
 
 func _draw_player() -> void:
@@ -766,7 +848,17 @@ func _draw_boss() -> void:
 	var windup := warning and fmod(float(_adjusted_song_time()), float(BAR_MS)) >= 1400.0
 	var frame_name := SpritePose.boss_frame(now - (_boss_attack_until - 520), windup)
 	var pose: Rect2 = SpritePose.boss(Rect2(center.x - 55, center.y - 53, 110, 105), now - (_boss_attack_until - 520), now - (_boss_hit_until - 420))
-	draw_texture_rect(BOSS_FRAMES[frame_name], pose, false, tint)
+	if _is_prism():
+		var stance := Encounters.stance(_encounter, _bar_index)
+		var stance_color := Color("c598ff") if stance == "armored" else Art.TEAL
+		draw_texture_rect(PRISM_ART, Rect2(pose.position + Vector2(9, 0), Vector2(pose.size.x - 18, pose.size.y)), false, tint)
+		for shard in 4:
+			var angle := float(shard) * TAU / 4 + float(maxi(0, _song_time_ms)) / 1800.0
+			var radius := 28.0 if stance == "armored" else 41.0
+			var point := center + Vector2(cos(angle), sin(angle)) * radius
+			draw_colored_polygon(PackedVector2Array([point + Vector2(0, -4), point + Vector2(3, 0), point + Vector2(0, 4), point + Vector2(-3, 0)]), stance_color)
+	else:
+		draw_texture_rect(BOSS_FRAMES[frame_name], pose, false, tint)
 	if now < _boss_hit_until:
 		var burst_progress := clampf(float(now - (_boss_hit_until - 420)) / 420.0, 0.0, 1.0)
 		for spark in 9:
@@ -810,7 +902,15 @@ func _attack_pattern_color() -> Color:
 			return Color("ff7f66")
 		"rush":
 			return Color("ffc45e")
+		"echo":
+			return Color("c598ff")
+		"offbeat":
+			return Color("62e9db")
 	return Color("ff668e")
+
+
+func _is_prism() -> bool:
+	return _encounter == "prism" and not _practice_mode
 
 
 func _draw_spell_effects() -> void:

@@ -6,6 +6,8 @@ const BAR_MS := 2000
 const STANDARD_CUE_STEPS := [0, 2, 4, 6]
 const SYNCOPATED_CUE_STEPS := [0, 3, 4, 7]
 const RUSH_CUE_STEPS := [0, 4, 6, 7]
+const ECHO_CUE_STEPS := [0, 1, 4, 5]
+const OFFBEAT_CUE_STEPS := [1, 3, 5, 7]
 
 
 func tutorial_skill(bar_index: int) -> String:
@@ -66,6 +68,10 @@ func attack_cue_steps(bar_index: int, phase: int, pattern_override: String = "")
 			steps = SYNCOPATED_CUE_STEPS
 		"rush":
 			steps = RUSH_CUE_STEPS
+		"echo":
+			steps = ECHO_CUE_STEPS
+		"offbeat":
+			steps = OFFBEAT_CUE_STEPS
 		_:
 			steps = STANDARD_CUE_STEPS
 	return steps.duplicate()

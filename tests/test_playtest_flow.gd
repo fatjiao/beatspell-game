@@ -85,7 +85,9 @@ func _run() -> void:
 	resume_key.physical_keycode = KEY_P
 	resume_key.pressed = true
 	stage.call("_unhandled_input", resume_key)
-	_check(not stage.get("_paused") and not stage.get("_drill_report_open"), "P resumes directly from training report")
+	_check(stage.get("_paused") and stage.get("_resume").active and not stage.get("_drill_report_open"), "P starts resume countdown directly from training report")
+	stage.call("_update_resume", stage.get("_resume_started_ticks") + 1500)
+	_check(not stage.get("_paused"), "training report resumes after three beats")
 	stage.set("_song_time_ms", 11_900)
 	stage.call("_unhandled_input", drill_key)
 	stage.call("_unhandled_input", drill_key)
@@ -127,6 +129,8 @@ func _run() -> void:
 	stage.call("_handle_options_input", KEY_ESCAPE)
 	_check(stage.get("_paused") and stage.get_node("BattleOverlay").mode == "pause", "closing options preserves pause")
 	stage.call("_toggle_pause")
+	_check(stage.get("_paused") and stage.get("_resume").active, "resume keeps battle paused during count-in")
+	stage.call("_update_resume", stage.get("_resume_started_ticks") + 1500)
 	_check(not stage.get("_paused"), "battle resumes from pause")
 	stage.call("_show_title")
 	_check(stage.get("_waiting_to_start") and not stage.get("_practice_mode"), "returning to title clears practice")

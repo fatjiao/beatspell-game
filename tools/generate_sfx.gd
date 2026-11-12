@@ -27,5 +27,5 @@ func _init() -> void:
 	if error != OK:
 		quit(1)
 		return
-	print("Exported 14 original WAV effects and ordered sound reel.")
+	print("Exported %d original WAV effects and ordered sound reel." % Bank.SOUNDS.size())
 	quit(0)

@@ -10,6 +10,8 @@ func run() -> Array[String]:
 	for invalid in [null, true, 2, "unknown", [], {}]:
 		_equal(failures, Rules.normalize(invalid), "ritual", "invalid encounter safely selects ritual")
 	_equal(failures, Rules.label("duel"), "DUEL", "stable display label")
+	_equal(failures, Rules.normalize("prism"), "prism", "prism is a selectable encounter")
+	_equal(failures, Rules.label("prism"), "PRISM", "prism display label")
 	_equal(failures, Rules.label("unknown"), "RITUAL", "unknown label falls back")
 	for bar in range(-1, 45):
 		_equal(failures, Rules.tutorial_skill("ritual", bar), director.tutorial_skill(bar), "ritual retains tutorial at bar %d" % bar)
@@ -23,7 +25,7 @@ func run() -> Array[String]:
 		_equal(failures, Rules.phase(mode, 9, 20, 60), 3, "one-third threshold")
 	_equal(failures, Rules.phase("ritual", 8, 1, 60), 1, "ritual teaching stays in phase one")
 	_equal(failures, Rules.phase("ritual", 9, 1, 60), 3, "ritual health phase starts after teaching")
-	for mode in ["duel", "gauntlet"]:
+	for mode in ["duel", "gauntlet", "prism"]:
 		for bar in range(9):
 			_equal(failures, Rules.tutorial_skill(mode, bar), "", "advanced encounters have no timed lesson")
 		_equal(failures, Rules.phase(mode, 0, 20, 60), 3, "advanced encounters follow health immediately")
@@ -39,6 +41,26 @@ func run() -> Array[String]:
 	for mode in ["ritual", "duel"]:
 		_equal(failures, Rules.attack_damage(mode, 1), 1, "normal phase one deals one")
 		_equal(failures, Rules.attack_damage(mode, 2), 2, "normal phase two deals two")
+	for mode in ["ritual", "duel", "gauntlet", "unknown"]:
+		_equal(failures, Rules.boss_health(mode), 60, "existing boss health is unchanged")
+		for bar in range(-1, 12):
+			_equal(failures, Rules.stance(mode, bar), "neutral", "other encounters have no stance")
+			_equal(failures, Rules.flare_modifier(mode, bar), 0, "other encounters have no flare modifier")
+	_equal(failures, Rules.boss_health("prism"), 72, "prism has a longer health budget")
+	_equal(failures, Rules.stance("prism", -1), "neutral", "count-in has no stance")
+	_equal(failures, Rules.flare_modifier("prism", -1), 0, "count-in has no damage modifier")
+	for bar in range(12):
+		var armored := bar % 4 < 2
+		_equal(failures, Rules.stance("prism", bar), "armored" if armored else "open", "prism stance follows four global bars")
+		_equal(failures, Rules.flare_modifier("prism", bar), -1 if armored else 1, "prism stance supplies damage delta")
+	for phase_number in [1, 2, 3]:
+		_equal(failures, _attack_bars("prism", phase_number, 12), [1, 3, 5, 7, 9, 11], "prism attacks every two bars regardless of phase")
+		_equal(failures, Rules.attack_damage("prism", phase_number), 2, "prism attack damage stays two")
+		for index in 8:
+			_equal(failures, Rules.attack_pattern("prism", index * 2 + 1, phase_number), "echo" if index % 2 == 0 else "offbeat", "prism alternates echo then offbeat")
+	_equal(failures, Rules.phase("prism", 0, 49, 72), 1, "prism first health threshold scales to 72")
+	_equal(failures, Rules.phase("prism", 0, 48, 72), 2, "prism phase two starts at 48 HP without tutorial")
+	_equal(failures, Rules.phase("prism", 0, 24, 72), 3, "prism phase three starts at 24 HP")
 	return failures
 
 

@@ -59,6 +59,21 @@ func run() -> Array:
 	_expect_equal(failures, director.attack_cue_index(23_000, 11, 3), 1, "rush second cue begins the acceleration")
 	_expect_equal(failures, director.attack_cue_index(23_500, 11, 3), 2, "rush third cue lands late in the bar")
 	_expect_equal(failures, director.attack_cue_index(23_750, 11, 3), 3, "rush final cue lands directly before impact")
+	_expect_equal(failures, director.attack_cue_steps(1, 1, "echo"), [0, 1, 4, 5], "echo cues arrive as two eighth-note pairs")
+	_expect_equal(failures, director.attack_cue_steps(1, 1, "offbeat"), [1, 3, 5, 7], "offbeat cues occupy all four offbeats")
+	for pair in [["echo", [0, 250, 1000, 1250]], ["offbeat", [250, 750, 1250, 1750]]]:
+		var pattern: String = pair[0]
+		var times: Array = pair[1]
+		for index in times.size():
+			var cue_time: int = 2000 + times[index]
+			_expect_equal(failures, director.attack_cue_index(cue_time, 1, 1, true, pattern), index, pattern + " advances exactly at cue boundary")
+			_expect_equal(failures, director.attack_cue_index(cue_time - 1, 1, 1, true, pattern), index - 1, pattern + " does not advance before cue boundary")
+		_expect_equal(failures, director.attack_cue_index(4000, 1, 1, true, pattern), -1, pattern + " warning ends at impact")
+		var pattern_copy: Array = director.attack_cue_steps(1, 1, pattern)
+		pattern_copy[0] = 7
+		_expect_equal(failures, director.attack_cue_steps(1, 1, pattern)[0], 0 if pattern == "echo" else 1, pattern + " cue array cannot be mutated by caller")
+	_expect_equal(failures, director.attack_cue_index(2000, 1, 1, true, "offbeat"), -1, "offbeat bar begins with silence")
+	_expect_equal(failures, director.attack_cue_index(2249, 1, 1, true, "offbeat"), -1, "offbeat first rest lasts 250ms")
 	return failures
 
 

@@ -8,6 +8,7 @@ const RESONANCE_INTERVAL := 4
 
 var player_hp := MAX_PLAYER_HP
 var boss_hp := MAX_BOSS_HP
+var max_boss_hp := MAX_BOSS_HP
 var shield_active := false
 var combo := 0
 var max_combo := 0
@@ -24,7 +25,12 @@ var _shield_cast_ms := -1
 var _shield_perfect := false
 
 
-func cast_spell(skill: String, grade: String = "perfect", song_time_ms: int = -1) -> Dictionary:
+func _init(boss_health: int = MAX_BOSS_HP) -> void:
+	max_boss_hp = maxi(1, boss_health)
+	boss_hp = max_boss_hp
+
+
+func cast_spell(skill: String, grade: String = "perfect", song_time_ms: int = -1, flare_modifier: int = 0) -> Dictionary:
 	var result := {"skill": skill, "amount": 0, "bonus": 0}
 	if skill not in ["fireball", "shield", "heal"] or grade not in ["perfect", "good"]:
 		break_combo()
@@ -33,7 +39,7 @@ func cast_spell(skill: String, grade: String = "perfect", song_time_ms: int = -1
 	match skill:
 		"fireball":
 			var bonus := (2 if exposed else 0) + (1 if resonance_ready else 0)
-			var damage := (2 if grade == "perfect" else 1) + bonus
+			var damage := maxi(1, (2 if grade == "perfect" else 1) + bonus + flare_modifier)
 			var previous_hp := boss_hp
 			boss_hp = maxi(0, boss_hp - damage)
 			result.amount = previous_hp - boss_hp

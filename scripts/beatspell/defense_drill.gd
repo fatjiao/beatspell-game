@@ -1,8 +1,8 @@
 extends RefCounted
 
-const PATTERNS := ["standard", "syncopated", "rush"]
-const LABELS := ["STANDARD", "SYNCOPATED", "RUSH"]
-const SHORT_LABELS := ["STD", "SYNC", "RUSH"]
+const PATTERNS := ["standard", "syncopated", "rush", "echo", "offbeat"]
+const LABELS := ["STANDARD", "SYNCOPATED", "RUSH", "ECHO", "OFFBEAT"]
+const SHORT_LABELS := ["STD", "SYNC", "RUSH", "ECHO", "OFFBEAT"]
 const CLEAR_STREAK := 3
 
 var selected := 0

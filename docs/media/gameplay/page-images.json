@@ -37,8 +37,8 @@
       "title": "精准格挡 破防与增伤关系",
       "section": "格挡 破防与共鸣",
       "path": "guard-and-bonuses.png",
-      "reference": "library-file:fde1_bGliZmlsZV9YQTdmWmp1U1JyUnVmYlFRbUhKcmln_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "75f571efba47526ce005c4a4aa84d993c9f335e82b0fd63d4611574afc210bd4",
+      "reference": "library-file:fde1_bGliZmlsZV9INEI1ZG5xekdHbVNEbVhGMVlQcER3_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "8878add652f369082eed572252091690468158b3ee1f269f9e4d0409327a31cf",
       "width": 1200,
       "height": 940
     },
@@ -67,8 +67,8 @@
       "title": "三种防御训练与训练报告",
       "section": "防御训练",
       "path": "defense-report.png",
-      "reference": "library-file:fde1_bGliZmlsZV9LNmVBWmlnXzRuUmY4Q1hYSThIRWln_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "64dcbde49f26e1d50b350f2708fe145f0896c7b36fd26272a89cbb1dfb58df9f",
+      "reference": "library-file:fde1_bGliZmlsZV8ySV9ncVpzS3JaWE1WdmE1dU5GT0Nn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "52baecf20f18db967561cdec37c96486b7a98652e767b2aa961b7448f66846ae",
       "width": 1200,
       "height": 940
     },
@@ -77,8 +77,8 @@
       "title": "结算画面实机说明",
       "section": "结算统计与评级",
       "path": "results.png",
-      "reference": "library-file:fde1_bGliZmlsZV9YeTZ4ZVlrZ1llUEVFWUVEeGtCS2d3_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "b14d2598c981a5ddd49921b18d0e80e071774e6279776bc432181cfbd5bb38b6",
+      "reference": "library-file:fde1_bGliZmlsZV8zVFNSSmQxRk80UU9MUHI5UHA2Wmtn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "82673daf1e68165c947bdde22c2037cd31b7c00308bf66a0a5c38754a7646fc0",
       "width": 1200,
       "height": 940
     },
@@ -107,8 +107,8 @@
       "title": "战斗模式选择",
       "section": "三种战斗模式",
       "path": "encounters.png",
-      "reference": "library-file:fde1_bGliZmlsZV9RdF9ZcUFpX1NyODcybjVqamlOdkdB_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "8cf56d948de409d0fbc48366adb31b4d914b055cd7f345fe5122eb6b4eb89d40",
+      "reference": "library-file:fde1_bGliZmlsZV9YWVpwZHk5b3FVdWhKT0NBRUFlV0NB_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "d0dfb9746619585f24c663a28b218b3715d9b0e681de7511e19e42aa9593ce41",
       "width": 1200,
       "height": 940
     },
@@ -117,10 +117,30 @@
       "title": "本地战绩",
       "section": "本地战绩与重复挑战",
       "path": "records.png",
-      "reference": "library-file:fde1_bGliZmlsZV9lNjdjRFhfaTlhT25sblNMSTVxYUZR_FileDrive_89406de7bf3481919e73d5472553c009",
-      "sha256": "fce4ca343830f9231a6ed553309f0296a0373c7ed22fdb1e4a9cb10f7754dca6",
+      "reference": "library-file:fde1_bGliZmlsZV8weG5JVXYxbzk4VzU2bDRnTmlDbDVn_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "c0b2a98abc869765bcb665e5775f3e2134f3bffe0ffb1642df786603ca43355b",
       "width": 1200,
       "height": 940
+    },
+    {
+      "name": "prism-boss",
+      "title": "棱镜守卫的姿态与预警",
+      "section": "棱镜守卫：护甲与核心开放",
+      "path": "prism-boss.png",
+      "width": 1200,
+      "height": 940,
+      "reference": "library-file:fde1_bGliZmlsZV9FYjJsLTRHZ1BnRjBqNjRhRGp3MElR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "4bcad4adb57bba324d3d7ea632e23708683c534553bef08cd642d253b1d08c85"
+    },
+    {
+      "name": "session-safety",
+      "title": "暂停与三拍恢复",
+      "section": "操作与界面",
+      "path": "session-safety.png",
+      "width": 1200,
+      "height": 940,
+      "reference": "library-file:fde1_bGliZmlsZV8temRWYWJaNmZOZWo1R3FzQ0wyMTZR_FileDrive_89406de7bf3481919e73d5472553c009",
+      "sha256": "a6ba1f2ff082b525629a88fe014e7cf797ed9b994797391b9cb28b820041df38"
     }
   ]
 }

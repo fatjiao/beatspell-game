@@ -202,7 +202,7 @@ func _capture() -> void:
 	stage.get("_practice").step = 3
 	stage.set("_practice_defense", true)
 	var drill = stage.get("_drill")
-	for index in 3:
+	for index in 5:
 		if index > 0:
 			drill.request_selection(1)
 			drill.commit_selection()
@@ -247,19 +247,36 @@ func _capture() -> void:
 	if not _save_view("res://build/beatspell-strike-preview.png"):
 		quit(1)
 		return
-	for encounter in ["duel", "gauntlet"]:
+	for encounter in ["duel", "gauntlet", "prism"]:
 		stage.set("_encounter", encounter)
 		stage.call("_show_title")
 		await process_frame
 		await process_frame
 		_save_view("res://build/beatspell-title-%s-preview.png" % encounter)
 	stage.call("_start_run")
+	stage.get_node("BattleOverlay").hide_primary()
+	for state in [[1, 3250, "armor"], [3, 7750, "open"]]:
+		stage.set("_bar_index", state[0])
+		stage.set("_song_time_ms", state[1])
+		stage.get("_battle").boss_hp = 62 if state[2] == "armor" else 48
+		stage.call("_clear_visual_effects")
+		stage.queue_redraw()
+		await process_frame
+		await process_frame
+		_save_view("res://build/beatspell-prism-%s-preview.png" % state[2])
+	stage.call("_toggle_pause")
+	stage.call("_toggle_pause")
+	stage.queue_redraw()
+	await process_frame
+	await process_frame
+	_save_view("res://build/beatspell-resume-preview.png")
+	stage.call("_start_run")
 	stage.set("_records", Records.empty_records())
 	stage.set("_song_time_ms", 40000)
 	stage.set("_bar_index", 19)
 	stage.set("_active_phase", 3)
 	stage.get("_battle").boss_hp = 0
-	stage.get("_battle").total_damage = 60
+	stage.get("_battle").total_damage = 72
 	stage.get("_battle").max_combo = 18
 	stage.get("_performance").record_input({"grade": "perfect", "offset_ms": 15})
 	stage.get("_performance").record_attempt("fireball", "perfect")
@@ -267,7 +284,7 @@ func _capture() -> void:
 	await process_frame
 	await process_frame
 	_save_view("res://build/beatspell-record-result-preview.png")
-	stage.get_node("BattleOverlay").show_records(stage.get("_records"), "gauntlet")
+	stage.get_node("BattleOverlay").show_records(stage.get("_records"), "prism")
 	await process_frame
 	await process_frame
 	_save_view("res://build/beatspell-records-preview.png")

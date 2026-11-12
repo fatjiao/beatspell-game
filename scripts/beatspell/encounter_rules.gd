@@ -2,8 +2,8 @@ extends RefCounted
 
 ## Encounter choice changes scheduling, never the shared rhythm or spell grammar.
 const Director = preload("res://scripts/beatspell/battle_director.gd")
-const MODES := ["ritual", "duel", "gauntlet"]
-const LABELS := ["RITUAL", "DUEL", "GAUNTLET"]
+const MODES := ["ritual", "duel", "gauntlet", "prism"]
+const LABELS := ["RITUAL", "DUEL", "GAUNTLET", "PRISM"]
 
 
 static func normalize(mode: Variant) -> String:
@@ -12,6 +12,23 @@ static func normalize(mode: Variant) -> String:
 
 static func label(mode: String) -> String:
 	return LABELS[MODES.find(normalize(mode))]
+
+
+static func boss_health(mode: String) -> int:
+	return 72 if normalize(mode) == "prism" else 60
+
+
+static func stance(mode: String, bar: int) -> String:
+	if normalize(mode) != "prism" or bar < 0:
+		return "neutral"
+	return "armored" if bar % 4 < 2 else "open"
+
+
+static func flare_modifier(mode: String, bar: int) -> int:
+	match stance(mode, bar):
+		"armored": return -1
+		"open": return 1
+	return 0
 
 
 static func tutorial_skill(mode: String, bar: int) -> String:
@@ -30,7 +47,7 @@ static func is_attack_bar(mode: String, bar: int, phase_number: int) -> bool:
 	match normalize(mode):
 		"ritual":
 			return Director.new().is_attack_bar(bar, phase_number)
-		"gauntlet":
+		"gauntlet", "prism":
 			return (bar + 1) % 2 == 0
 		_:
 			match phase_number:
@@ -41,7 +58,7 @@ static func is_attack_bar(mode: String, bar: int, phase_number: int) -> bool:
 
 
 static func attack_damage(mode: String, phase_number: int) -> int:
-	return 2 if normalize(mode) == "gauntlet" else Director.new().attack_damage(phase_number)
+	return 2 if normalize(mode) in ["gauntlet", "prism"] else Director.new().attack_damage(phase_number)
 
 
 static func attack_pattern(mode: String, bar: int, phase_number: int) -> String:
@@ -52,6 +69,9 @@ static func attack_pattern(mode: String, bar: int, phase_number: int) -> String:
 			# First attack is zero-based bar 1. Each attack advances one pattern.
 			var ordinal := maxi(0, int(floor(float(bar + 1) / 2.0)) - 1)
 			return ["standard", "syncopated", "rush"][ordinal % 3]
+		"prism":
+			var ordinal := maxi(0, int(floor(float(bar + 1) / 2.0)) - 1)
+			return "echo" if ordinal % 2 == 0 else "offbeat"
 		_:
 			if phase_number <= 1:
 				return "standard"
